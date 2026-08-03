@@ -12,9 +12,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+
+// Store orders in memory to link orderId -> customer info
+const ordersStore = {};
 
 // Cleanup stale Chrome session lock if left over
 const lockPath = path.resolve("./.wwebjs_auth/session/SingletonLock");
@@ -58,7 +62,6 @@ waClient.on("auth_failure", (msg) => {
 waClient.on("disconnected", (reason) => {
   console.log("⚠️ WhatsApp Terputus:", reason);
   isWaReady = false;
-  waClient.initialize();
 });
 
 waClient.initialize();
@@ -83,13 +86,17 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Endpoint untuk mengirim notifikasi pesanan ke WhatsApp
+// Endpoint untuk mengirim notifikasi awal pesanan ke WhatsApp
 app.post("/api/send-order-notif", async (req, res) => {
   try {
     const { name, nim, prodi, faculty, whatsapp, products, total, orderId } = req.body;
 
     if (!whatsapp) {
       return res.status(400).json({ error: "Nomor WhatsApp wajib diisi." });
+    }
+
+    if (orderId) {
+      ordersStore[orderId] = { name, nim, prodi, faculty, whatsapp, products, total };
     }
 
     const formattedNumber = formatWaNumber(whatsapp);
@@ -111,13 +118,13 @@ Halo kak *${name}*, terima kasih telah memesan atribut ospek UPN Veteran Yogyaka
 Batas waktu pembayaran adalah *10 menit*. Silakan selesaikan pembayaran melalui aplikasi e-wallet atau mobile banking kamu.
 
 📲 *Grup WhatsApp Resmi:*
-https://chat.whatsapp.com/MudahkanPKKMUDemo
+${WA_GROUP_LINK}
 
 _Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
 
     if (isWaReady) {
       await waClient.sendMessage(formattedNumber, messageText);
-      console.log(`📩 Notifikasi WA terkirim ke: ${formattedNumber}`);
+      console.log(`📩 Notifikasi tagihan WA terkirim ke: ${formattedNumber}`);
       return res.json({ status: "success", message: "Notifikasi WA berhasil dikirim!" });
     } else {
       console.log("⚠️ WA Client belum ready, pesan ditunda/dilewati.");
@@ -129,7 +136,7 @@ _Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
   }
 });
 
-// Endpoint Webhook Midtrans (Status Pembayaran)
+// Endpoint Webhook Midtrans (Diakses oleh Midtrans ketika Pembayaran QRIS LUNAS)
 app.post("/api/midtrans-webhook", async (req, res) => {
   try {
     const notification = req.body;
@@ -137,10 +144,39 @@ app.post("/api/midtrans-webhook", async (req, res) => {
 
     const orderId = notification.order_id;
     const transactionStatus = notification.transaction_status;
-    const grossAmount = notification.gross_amount;
+    const fraudStatus = notification.fraud_status;
 
-    if (transactionStatus === "settlement" && isWaReady) {
-      console.log(`✅ Pembayaran LUNAS untuk ${orderId}`);
+    if (
+      (transactionStatus === "settlement" || transactionStatus === "capture") &&
+      (fraudStatus === "accept" || !fraudStatus)
+    ) {
+      console.log(`✅ Pembayaran QRIS LUNAS untuk Order ID: ${orderId}`);
+      const orderData = ordersStore[orderId];
+
+      if (orderData && isWaReady) {
+        const formattedNumber = formatWaNumber(orderData.whatsapp);
+        const productListText = Array.isArray(orderData.products)
+          ? orderData.products.join(", ")
+          : orderData.products;
+
+        const successMsg = `🎉 *PEMBAYARAN QRIS BERHASIL (LUNAS)*
+
+Halo kak *${orderData.name}*, terima kasih! Pembayaran untuk pesanan atribut ospek kamu telah *KAMI TERIMA*!
+
+📋 *Detail Transaksi Lunas:*
+• Order ID: *${orderId}*
+• Total Pembayaran: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}* (LUNAS via QRIS Midtrans)
+• Atribut: *${productListText || "-"}*
+
+📲 *LANGKAH WAJIB SELANJUTNYA:*
+Silakan langsung bergabung ke grup WhatsApp resmi peserta PKKBN UPNVYK melalui link berikut:
+${WA_GROUP_LINK}
+
+_Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
+
+        await waClient.sendMessage(formattedNumber, successMsg);
+        console.log(`📩 Notifikasi PEMBAYARAN LUNAS terkirim via WA ke: ${formattedNumber}`);
+      }
     }
 
     res.status(200).json({ status: "OK" });

@@ -126,7 +126,7 @@ const prodiList = [
   "Hubungan Masyarakat",
 ];
 
-const whatsappGroupUrl = "https://chat.whatsapp.com/MudahkanPKKMUDemo";
+const whatsappGroupUrl = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
 
 const rupiah = (amount) => new Intl.NumberFormat("id-ID", {
   style: "currency",
