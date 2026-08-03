@@ -1,4 +1,5 @@
 // Auto-deploy trigger for Backend server - 2026-08-03
+console.log("🚀 Initializing Mudahkan PKKmu Backend...");
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
