@@ -2,6 +2,10 @@ FROM node:20-slim
 
 # Install Chromium dependencies for whatsapp-web.js (Puppeteer)
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3 \
+    make \
+    g++ \
     chromium \
     fonts-liberation \
     libappindicator3-1 \
