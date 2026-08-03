@@ -40,6 +40,10 @@ let settings = {
 
 let db = null;
 try {
+  const dir = path.dirname(SETTINGS_DB);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   db = new Database(SETTINGS_DB);
 } catch (e) {
   console.error("⚠️ Gagal membuka SQLite, fallback ke settings.json:", e.message);
