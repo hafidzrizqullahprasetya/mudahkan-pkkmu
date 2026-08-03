@@ -1,4 +1,4 @@
-// Auto-deploy trigger test for Dockploy
+// Auto-deploy live test via Cloudflare Tunnel Webhook
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
