@@ -27,6 +27,11 @@ process.on("uncaughtException", (err) => {
   console.error("⚠️ Uncaught Exception:", err);
 });
 
+// Start HTTP Server immediately so Docker container stays UP
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Node.js Backend Server listening on port: ${PORT}`);
+});
+
 // Store orders in memory to link orderId -> customer info
 const ordersStore = {};
 let latestQrImage = "";
@@ -45,6 +50,7 @@ let settings = {
 };
 
 let db = null;
+console.log("📍 [STEP 1] Loading SQLite database...");
 try {
   const dir = path.dirname(SETTINGS_DB);
   if (!fs.existsSync(dir)) {
@@ -52,9 +58,9 @@ try {
   }
   const Database = (await import("better-sqlite3")).default;
   db = new Database(SETTINGS_DB);
-  console.log("💾 SQLite database terhubung.");
+  console.log("💾 [STEP 1 OK] SQLite database terhubung.");
 } catch (e) {
-  console.error("⚠️ SQLite tidak dapat dimuat, otomatis fallback ke settings.json:", e && e.message);
+  console.error("⚠️ [STEP 1 FALLBACK] SQLite tidak dapat dimuat, fallback ke settings.json:", e && e.message);
   db = null;
 }
 
@@ -204,6 +210,7 @@ function createWaClient() {
   return client;
 }
 
+console.log("📍 [STEP 2] Creating WhatsApp Client instance...");
 let waClient = createWaClient();
 
 // initialize dengan retry otomatis — jangan biarkan crash mematikan proses
@@ -211,7 +218,7 @@ const MAX_INIT_RETRIES = 8;
 async function startWaClient() {
   for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
     try {
-      console.log(`🤖 Inisialisasi WhatsApp (percobaan ${attempt})...`);
+      console.log(`🤖 [STEP 3] Inisialisasi WhatsApp Puppeteer (percobaan ${attempt})...`);
       await waClient.initialize();
       return; // sukses, selesai
     } catch (err) {
@@ -231,7 +238,10 @@ async function startWaClient() {
   }
 }
 
-startWaClient();
+// Delay WA init by 2 seconds so Express HTTP server opens port 5760 cleanly first
+setTimeout(() => {
+  startWaClient();
+}, 2000);
 
 // Format Phone Number to WhatsApp ID (628xxx@c.us)
 function formatWaNumber(phone) {
