@@ -513,7 +513,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
   );
 }
 
-const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwhOZiUdms7MP1K4jRdCxYIiRx2xYosCmyocxx9XZYg_LJPL7qbVEJmA18BXjJoon3gLg/exec";
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbx1cdnOcQVtADJbf4LJ2PrTmDhPkmnhGVBXHSBmdUspGC-j2M-CB-JflYVdMEXBlNQpEg/exec";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://notif-pkk.pempekasliwongkito.my.id";
 
 const fileToBase64 = (file) => {
