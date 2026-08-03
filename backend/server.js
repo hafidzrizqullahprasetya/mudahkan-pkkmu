@@ -293,25 +293,26 @@ app.get("/", (req, res) => {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f2f0e9; color: #151714; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-        .shell { width: 100%; max-width: 560px; }
+        .shell { width: 100%; max-width: 560px; margin: auto; }
         .hero { text-align: center; margin-bottom: 28px; }
-        .brand-mark { width: 72px; height: 72px; border-radius: 50%; background: #174b36; color: #f2f0e9; display: inline-grid; place-items: center; font-weight: 900; font-size: 26px; letter-spacing: 1px; border: 3px solid #151714; box-shadow: 5px 5px 0 #151714; margin-bottom: 18px; }
+        .brand-mark { width: 72px; height: 72px; border-radius: 50%; background: #174b36; color: #f2f0e9; display: inline-grid; place-items: center; font-weight: 900; font-size: 26px; letter-spacing: 1px; border: 3px solid #151714; box-shadow: 4px 4px 0 #151714; margin-bottom: 18px; }
         h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.5px; }
         h1 span { color: #174b36; }
         .sub { font-size: 14px; color: #555; margin-top: 6px; }
-        .card { background: #ffffff; border: 3px solid #151714; box-shadow: 8px 8px 0 #151714; padding: 26px; margin-bottom: 22px; }
+        .card { background: #ffffff; border: 3px solid #151714; box-shadow: 4px 4px 0 #151714; padding: 26px; margin-bottom: 22px; }
         .status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
         .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 6px 12px; border: 2px solid #151714; border-radius: 999px; background: #f2f0e9; }
         .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
         .pill.ready .dot { background: #2e9e4f; }
         .pill.not-ready .dot { background: #b3402a; }
         .links { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .btn { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid #151714; background: #174b36; color: #f2f0e9; box-shadow: 4px 4px 0 #151714; text-decoration: none; transition: transform 0.1s ease, box-shadow 0.1s ease; }
-        .btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #151714; }
+        .btn { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid #151714; background: #174b36; color: #f2f0e9; box-shadow: 3px 3px 0 #151714; text-decoration: none; transition: transform 0.1s ease, box-shadow 0.1s ease; }
+        .btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #151714; }
         .btn small { display: block; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 500; color: #cfe3d8; }
         .btn--light { background: #f2f0e9; color: #151714; }
         .btn--light small { color: #666; }
         footer { text-align: center; font-size: 12px; color: #888; }
+        @media (max-width: 520px) { .links { grid-template-columns: 1fr; } }
       </style>
     </head>
     <body>
