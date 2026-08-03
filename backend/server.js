@@ -16,6 +16,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5760;
 const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
+// Backend v1.0.8 - Google Apps Script v7 Production Ready
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhOZiUdms7MP1K4jRdCxYIiRx2xYosCmyocxx9XZYg_LJPL7qbVEJmA18BXjJoon3gLg/exec";
 
 app.use(cors());
