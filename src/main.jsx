@@ -185,6 +185,24 @@ function IconTag({ className = "svg-icon" }) {
   );
 }
 
+function IconCamera(props) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0-2-2h-3l-2.5-3z"/>
+      <circle cx="12" cy="13" r="3"/>
+    </svg>
+  );
+}
+
+function IconFolderUpload(props) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/>
+      <path d="M12 10v6m-3-3l3-3 3 3"/>
+    </svg>
+  );
+}
+
 function ProductArt({ type }) {
   return (
     <div className={`product-art product-art--${type}`} aria-hidden="true">
@@ -357,7 +375,7 @@ function PhotoUploadInput({ error, onChange }) {
               className="photo-reupload-btn"
               onClick={handleReupload}
             >
-              📷 Ganti foto / Upload ulang
+              <IconCamera style={{ marginRight: "6px", verticalAlign: "middle" }} /> Ganti foto / Upload ulang
             </button>
           </div>
         </div>
@@ -367,7 +385,7 @@ function PhotoUploadInput({ error, onChange }) {
           className="photo-upload-trigger"
           onClick={() => fileInputRef.current?.click()}
         >
-          <span className="upload-icon">📁</span>
+          <span className="upload-icon"><IconFolderUpload /></span>
           <div className="upload-text">
             <strong>Pilih Pas Foto 3x4</strong>
             <small>Format JPG, PNG, atau WEBP (Maksimal 1 foto)</small>
@@ -976,7 +994,7 @@ function App() {
                       onChange={() => setCocardOption("both")}
                     />
                     <div className="cocard-radio-text">
-                      <strong>Dua-duanya (PKKBN Pusat + Fakultas) ✨</strong>
+                      <strong>Dua-duanya (PKKBN Pusat + Fakultas)</strong>
                       <small>Dapatkan 2 kokard fisik sekaligus (Versi Pusat & Versi Fakultas) tanpa biaya tambahan!</small>
                     </div>
                   </label>
@@ -1114,7 +1132,7 @@ function App() {
               </div>
 
               {payMode === "testing" && (
-                <div className="qris-testing-badge">MODE TESTING — TRANSAKSI UJI (RP 1.000)</div>
+                <div className="qris-testing-badge">MODE TESTING — TRANSAKSI UJI (RP 1)</div>
               )}
 
               <div className="qris-order-details">
@@ -1126,17 +1144,18 @@ function App() {
 
             <div className="qris-modal-actions">
               <p className="qris-scan-help">Scan Kode QRIS menggunakan aplikasi E-Wallet atau Mobile Banking kamu.</p>
-              <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
-                Sudah Bayar? Masuk grup WhatsApp <span>↗</span>
-              </a>
-              <button
-                type="button"
-                className="button button--cancel"
-                style={{ width: "100%", marginTop: "10px" }}
-                onClick={() => setSubmitted(false)}
-              >
-                Tutup / Selesai
-              </button>
+              <div className="qris-buttons-group">
+                <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
+                  Sudah Bayar? Masuk grup WhatsApp ↗
+                </a>
+                <button
+                  type="button"
+                  className="button button--cancel"
+                  onClick={() => setSubmitted(false)}
+                >
+                  Tutup / Selesai
+                </button>
+              </div>
             </div>
           </div>
         </div>

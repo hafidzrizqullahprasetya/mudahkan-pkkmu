@@ -1194,7 +1194,7 @@ const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || ["Mid-server-", "
 app.post("/api/charge-qris", async (req, res) => {
   try {
     const { orderId, amount } = req.body;
-    const chargeAmount = settings.mode === "testing" ? 1000 : Math.max(1000, Number(amount || 0));
+    const chargeAmount = settings.mode === "testing" ? 1 : Number(amount || 0);
 
     const authHeader = "Basic " + Buffer.from(MIDTRANS_SERVER_KEY + ":").toString("base64");
     const response = await fetch("https://api.midtrans.com/v2/charge", {
