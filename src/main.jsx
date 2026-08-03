@@ -42,6 +42,42 @@ const products = [
     description: "Panduan ringkas agenda, denah, dan catatan kegiatan.",
     icon: "📖",
   },
+  {
+    id: "paket-lc",
+    number: "04",
+    name: "Paket Starter (Lanyard + Cocard)",
+    price: 15000,
+    note: "Hemat 3K",
+    description: "Paket hemat identitas ospek: Tali lanyard bercorak veteran + Kartu kokard peserta.",
+    icon: "✨",
+  },
+  {
+    id: "paket-lb",
+    number: "05",
+    name: "Paket Eko (Lanyard + Booklet)",
+    price: 30000,
+    note: "Hemat 3K",
+    description: "Tali lanyard bercorak hijau veteran + Buku panduan agenda kegiatan PKKBN.",
+    icon: "📚",
+  },
+  {
+    id: "paket-cb",
+    number: "06",
+    name: "Paket Duo (Cocard + Booklet)",
+    price: 32000,
+    note: "Hemat 3K",
+    description: "Kartu kokard identitas peserta + Buku panduan agenda kegiatan PKKBN lengkap.",
+    icon: "📝",
+  },
+  {
+    id: "paket-lengkap",
+    number: "07",
+    name: "Paket Lengkap (Lanyard + Cocard + Booklet)",
+    price: 38000,
+    note: "Paling Laris (Hemat 5K)",
+    description: "Set komplit seluruh atribut ospek: Lanyard, Cocard, dan Booklet PKKBN UPNVY.",
+    icon: "🔥",
+  },
 ];
 
 const pkkbnScopes = [
@@ -143,6 +179,10 @@ function ProductArt({ type }) {
         {type === "lanyard" && <><i>UPNVY • VETERAN • UPNVY</i><b>V</b></>}
         {type === "cocard" && <><small>PESERTA</small><b>V</b><em>NAMA / KELOMPOK</em></>}
         {type === "booklet" && <><small>BUKU PANDUAN</small><b>26</b><em>PKKBN UPNVY</em></>}
+        {type === "paket-lc" && <><small>PAKET STARTER</small><b>15K</b><em>LANYARD + COCARD</em></>}
+        {type === "paket-lb" && <><small>PAKET EKO</small><b>30K</b><em>LANYARD + BOOKLET</em></>}
+        {type === "paket-cb" && <><small>PAKET DUO</small><b>32K</b><em>COCARD + BOOKLET</em></>}
+        {type === "paket-lengkap" && <><small>PAKET LENGKAP</small><b>38K</b><em>SET KOMPLIT PKKBN</em></>}
       </div>
       <span className="art-caption">BELA NEGARA</span>
     </div>
