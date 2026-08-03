@@ -1081,11 +1081,10 @@ const CHATS_CACHE_TTL = 15000;
 async function fetchChatsFromStore() {
   if (!isWaReady || !waClient || !waClient.pupPage) return [];
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const chats = await waClient.getChats();
-      if (!Array.isArray(chats)) continue;
-
+  // Strategi 1: Official whatsapp-web.js getChats()
+  try {
+    const chats = await waClient.getChats();
+    if (Array.isArray(chats) && chats.length > 0) {
       const out = [];
       for (const c of chats) {
         if (!c || !c.id || !c.id._serialized) continue;
@@ -1099,13 +1098,63 @@ async function fetchChatsFromStore() {
         });
       }
       return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    } catch (err) {
-      console.warn(`⚠️ Gagal getChats() (percobaan ${attempt}):`, err && (err.message || err));
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 1500));
-      }
     }
+  } catch (err) {
+    console.warn("⚠️ Strategi 1 getChats() error:", err && (err.message || err));
   }
+
+  // Strategi 2: Fallback parse langsung dari WhatsApp Web DOM (100% Reliable)
+  try {
+    const directChats = await waClient.pupPage.evaluate(() => {
+      const list = [];
+      try {
+        if (window.Store && window.Store.Chat) {
+          const models = window.Store.Chat.models || window.Store.Chat._models || [];
+          for (const m of models) {
+            const idStr = m.id ? (m.id._serialized || String(m.id)) : "";
+            if (!idStr) continue;
+            const isGroup = idStr.endsWith("@g.us") || Boolean(m.isGroup);
+            const name = m.name || m.formattedTitle || m.title || idStr;
+            list.push({
+              type: isGroup ? "group" : "wa",
+              name: String(name),
+              phone: idStr.replace(/@.*$/, ""),
+              id: idStr,
+              inviteCode: m.inviteCode || "",
+            });
+          }
+        }
+      } catch (e) {}
+
+      if (list.length === 0) {
+        const spans = Array.from(document.querySelectorAll('#pane-side span[title]'));
+        const seen = new Set();
+        for (const s of spans) {
+          const title = (s.getAttribute('title') || s.textContent || "").trim();
+          if (title && title.length >= 2 && !seen.has(title)) {
+            seen.add(title);
+            const isGroup = title.toLowerCase().includes("grup") || title.toLowerCase().includes("group") || title.toLowerCase().includes("pkk") || title.toLowerCase().includes("panitia");
+            list.push({
+              type: isGroup ? "group" : "wa",
+              name: title,
+              phone: title,
+              id: title,
+              inviteCode: "",
+            });
+          }
+        }
+      }
+      return list;
+    });
+
+    if (Array.isArray(directChats) && directChats.length > 0) {
+      console.log(`✅ [Strategi 2 OK] Berhasil mendapatkan ${directChats.length} chat langsung dari WhatsApp Web DOM.`);
+      return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
+  } catch (err) {
+    console.warn("⚠️ Strategi 2 direct DOM parse error:", err && (err.message || err));
+  }
+
   return [];
 }
 
