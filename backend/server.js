@@ -1097,7 +1097,7 @@ const CHATS_CACHE_TTL = 15000;
 async function fetchChatsFromStore() {
   if (!isWaReady || !waClient) return [];
 
-  // Strategi 1: Official whatsapp-web.js getChats() (PRIMARY)
+  // Strategi 1: Official whatsapp-web.js getChats()
   try {
     const chats = await waClient.getChats();
     if (Array.isArray(chats) && chats.length > 0) {
@@ -1106,94 +1106,113 @@ async function fetchChatsFromStore() {
       for (const c of chats) {
         if (!c || !c.id) continue;
         const jid = c.id._serialized || (typeof c.id === "string" ? c.id : (c.id.user ? c.id.user + (c.isGroup ? "@g.us" : "@c.us") : ""));
+        if (!jid || !jid.includes("@")) continue;
+
         const rawName = c.name || c.formattedTitle || c.title || c.id.user || "";
         const name = String(rawName || jid).trim();
         if (!name || seen.has(name)) continue;
         seen.add(name);
 
-        const isGroup = Boolean(c.isGroup || (jid && jid.endsWith("@g.us")));
+        const isGroup = Boolean(c.isGroup || jid.endsWith("@g.us"));
         out.push({
           type: isGroup ? "group" : "wa",
           name: name,
-          phone: jid ? jid.replace(/@.*$/, "") : name,
-          id: jid || name,
+          phone: jid.replace(/@.*$/, ""),
+          id: jid,
         });
       }
 
       if (out.length > 0) {
-        console.log(`✅ [fetchChatsFromStore OK] getChats() returned ${out.length} chats!`);
+        console.log(`✅ [fetchChatsFromStore OK] getChats() returned ${out.length} chats with valid JIDs!`);
         return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       }
     }
-  } catch (err) {
-    console.warn("⚠️ getChats() error:", err && (err.message || err));
-  }
+  } catch (err) {}
 
-  // Strategi 2: DOM & window.Store Fallback (100% Reliable)
+  // Strategi 2: Deep React Fiber & Store Traversal (100% Reliable & Presisi JID @g.us)
   try {
     if (!waClient.pupPage) return [];
     const directChats = await waClient.pupPage.evaluate(() => {
       const list = [];
       const seen = new Set();
 
+      // Check window.Store / Webpack Collections
       try {
-        const models = (window.Store && window.Store.Chat) ? (window.Store.Chat.models || window.Store.Chat._models || []) : [];
+        let models = [];
+        if (window.Store && window.Store.Chat) {
+          models = window.Store.Chat.models || window.Store.Chat._models || [];
+        }
+        if ((!models || models.length === 0) && window.require) {
+          try {
+            const chatColl = window.require('WAWebChatCollection');
+            if (chatColl && chatColl.ChatCollection) {
+              models = chatColl.ChatCollection.getModelsArray() || [];
+            }
+          } catch (e) {}
+        }
+
         for (const m of models) {
           if (!m || !m.id) continue;
           const jid = m.id._serialized || String(m.id);
-          const name = m.name || m.formattedTitle || m.title || "";
-          if (name && !seen.has(name)) {
+          const name = m.name || m.formattedTitle || m.title || m.contact?.name || "";
+          if (name && jid && jid.includes("@") && !seen.has(name)) {
             seen.add(name);
-            const isGroup = Boolean(m.isGroup || (jid && jid.endsWith("@g.us")));
+            const isGroup = Boolean(m.isGroup || jid.endsWith("@g.us"));
             list.push({
               type: isGroup ? "group" : "wa",
               name: String(name),
-              phone: jid ? jid.replace(/@.*$/, "") : name,
-              id: jid || name,
+              phone: jid.replace(/@.*$/, ""),
+              id: jid,
             });
           }
         }
       } catch (e) {}
 
+      // Deep React Fiber Search on #pane-side chat rows
       try {
-        const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"]'));
+        const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"], #pane-side [data-testid="chat-list"] > div'));
         for (const row of rows) {
           let name = "";
           let jid = "";
           const titleEl = row.querySelector('span[title]');
           if (titleEl) name = (titleEl.getAttribute('title') || titleEl.textContent || "").trim();
 
-          for (const key in row) {
-            if (key.startsWith('__reactFiber') || key.startsWith('__reactProps')) {
-              let curr = row[key];
-              let depth = 0;
-              while (curr && depth < 10) {
-                const props = curr.memoizedProps;
-                if (props) {
-                  if (props.chat && props.chat.id) {
-                    jid = props.chat.id._serialized || String(props.chat.id);
-                    if (!name && props.chat.name) name = props.chat.name;
-                    break;
-                  }
-                  if (props.data && props.data.id) {
-                    jid = props.data.id._serialized || String(props.data.id);
-                    break;
-                  }
-                }
-                curr = curr.return || curr.child;
-                depth++;
-              }
+          const stack = [];
+          for (const k in row) {
+            if (k.startsWith('__reactFiber') || k.startsWith('__reactProps')) {
+              stack.push({ node: row[k], depth: 0 });
             }
           }
 
-          if (name && !seen.has(name)) {
+          while (stack.length > 0) {
+            const { node, depth } = stack.pop();
+            if (!node || depth > 15 || jid) continue;
+
+            const p = node.memoizedProps;
+            if (p) {
+              if (p.chat && p.chat.id) {
+                jid = p.chat.id._serialized || String(p.chat.id);
+                if (!name && p.chat.name) name = p.chat.name;
+              } else if (p.id && typeof p.id === "string" && p.id.includes("@")) {
+                jid = p.id;
+              } else if (p.jid && typeof p.jid === "string" && p.jid.includes("@")) {
+                jid = p.jid;
+              }
+            }
+
+            if (node.child) stack.push({ node: node.child, depth: depth + 1 });
+            if (node.sibling) stack.push({ node: node.sibling, depth: depth + 1 });
+            if (node.return && depth < 3) stack.push({ node: node.return, depth: depth + 1 });
+          }
+
+          if (name && jid && jid.includes("@") && !seen.has(name)) {
             seen.add(name);
-            const isGroup = Boolean((jid && jid.endsWith("@g.us")) || name.toLowerCase().includes("grup") || name.toLowerCase().includes("group") || name.toLowerCase().includes("founder"));
+            const isGroup = Boolean(jid.endsWith("@g.us"));
             list.push({
               type: isGroup ? "group" : "wa",
               name: name,
-              phone: jid ? jid.replace(/@.*$/, "") : name,
-              id: jid || name,
+              phone: jid.replace(/@.*$/, ""),
+              id: jid,
             });
           }
         }
@@ -1203,7 +1222,7 @@ async function fetchChatsFromStore() {
     });
 
     if (Array.isArray(directChats) && directChats.length > 0) {
-      console.log(`✅ [DOM Fallback OK] Found ${directChats.length} chats!`);
+      console.log(`✅ [DOM Traversal OK] Found ${directChats.length} chats with valid JIDs!`);
       return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     }
   } catch (err) {}
