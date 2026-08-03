@@ -580,20 +580,32 @@ function App() {
   const [payMode, setPayMode] = useState("production");
   const [productTab, setProductTab] = useState("all");
   const [isPaid, setIsPaid] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  const checkStatusNow = async () => {
+    if (!paymentData?.order_id || isPaid) return;
+    setCheckingStatus(true);
+    try {
+      if (!BACKEND_URL) return;
+      const res = await fetch(`${BACKEND_URL}/api/check-order-status?orderId=${paymentData.order_id}&_t=${Date.now()}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        console.log("🔍 [Frontend checkStatusNow]:", data);
+        if (data && data.paid) {
+          setIsPaid(true);
+        }
+      }
+    } catch (e) {
+      console.log("Error checking order status:", e);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   useEffect(() => {
     if (!submitted || !paymentData?.order_id || isPaid) return;
-    const interval = setInterval(() => {
-      if (!BACKEND_URL) return;
-      fetch(`${BACKEND_URL}/api/check-order-status?orderId=${paymentData.order_id}&_t=${Date.now()}`, { cache: "no-store" })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data && data.paid) {
-            setIsPaid(true);
-          }
-        })
-        .catch(() => {});
-    }, 2000);
+    checkStatusNow();
+    const interval = setInterval(checkStatusNow, 2000);
     return () => clearInterval(interval);
   }, [submitted, paymentData, isPaid]);
 
@@ -1182,6 +1194,15 @@ function App() {
                 <div className="qris-modal-actions">
                   <p className="qris-scan-help">Scan Kode QRIS menggunakan aplikasi E-Wallet atau Mobile Banking kamu.</p>
                   <div className="qris-buttons-group">
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      onClick={checkStatusNow}
+                      disabled={checkingStatus}
+                      style={{ background: "#e8efe9", color: "#174b36", borderColor: "#174b36" }}
+                    >
+                      {checkingStatus ? "⏳ Cek Status..." : "🔄 Cek Status Bayar"}
+                    </button>
                     <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
                       Sudah Bayar? Masuk grup WhatsApp ↗
                     </a>

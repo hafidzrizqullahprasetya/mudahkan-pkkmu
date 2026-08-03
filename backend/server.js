@@ -266,31 +266,29 @@ async function resolveCoordTarget() {
 
   try {
     let chats = await waClient.getChats().catch(() => []);
+    console.log(`🔍 [DEBUG resolveCoordTarget] Target: "${targetStr}", Total getChats: ${chats.length}`);
     for (const chat of chats) {
-      if (!chat || !chat.id || !chat.id._serialized) continue;
-      const chatId = String(chat.id._serialized);
-      if (!chatId.endsWith("@g.us") && !chatId.endsWith("@c.us")) continue;
-
+      if (!chat || !chat.id) continue;
+      const chatId = String(chat.id._serialized || chat.id);
       const rawName = String(chat.name || chat.formattedTitle || chat.title || "");
       const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const isGroup = Boolean(chat.isGroup || chatId.endsWith("@g.us"));
 
-      if (isGroup && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-        console.log(`🎯 [resolveCoordTarget OK] Group "${rawName}" -> Valid JID: ${chatId}`);
-        return chatId;
+      if (rawName && (chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+        console.log(`🎯 [resolveCoordTarget OK] Match "${rawName}" -> JID: ${chatId}`);
+        if (chatId.includes("@")) return chatId;
       }
     }
 
     const storeChats = await fetchChatsFromStore();
+    console.log(`🔍 [DEBUG resolveCoordTarget] Target: "${targetStr}", Total storeChats: ${storeChats.length}`);
     for (const chat of storeChats) {
       const chatId = String(chat.id || "");
-      if (!chatId.endsWith("@g.us") && !chatId.endsWith("@c.us")) continue;
-
       const rawName = String(chat.name || "");
       const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (chat.type === "group" && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-        console.log(`🎯 [resolveCoordTarget Store OK] Group "${rawName}" -> Valid JID: ${chatId}`);
-        return chatId;
+
+      if (rawName && (chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+        console.log(`🎯 [resolveCoordTarget Store OK] Match "${rawName}" -> JID: ${chatId}`);
+        if (chatId.includes("@")) return chatId;
       }
     }
   } catch (e) {
@@ -1247,7 +1245,21 @@ app.post("/api/charge-qris", async (req, res) => {
   }
 });
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYhGuKRLB5dWD4gTR6W3dG4SEwBX-YfgVuomj_3D6Iqy9_2Nf7DiBR98D8N20QOiVl-A/exec";
+async function sendToGoogleSheets(data) {
+  try {
+    console.log(`📊 [Google Sheets] Mengirim data (${data.orderId || "unknown"})...`);
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(data),
+      redirect: "follow",
+    });
+    const text = await res.text().catch(() => "");
+    console.log(`📊 [Google Sheets OK] Status: ${res.status}, Respon: ${text.slice(0, 150)}`);
+  } catch (e) {
+    console.error("❌ [Google Sheets FAIL] Error:", e && (e.message || e));
+  }
+}
 
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
@@ -1256,7 +1268,10 @@ app.get("/api/check-order-status", (req, res) => {
   if (!orderId) return res.json({ paid: false });
 
   const order = ordersStore[orderId];
-  if (order && order.status === "PAID") {
+  const isPaid = Boolean(order && order.status === "PAID");
+  console.log(`🔍 [check-order-status API] Order: ${orderId} -> Paid: ${isPaid}`);
+
+  if (isPaid) {
     return res.json({ paid: true, status: "PAID", order });
   }
   return res.json({ paid: false, status: "PENDING" });
@@ -1277,13 +1292,7 @@ app.post("/api/send-order-notif", async (req, res) => {
     }
 
     // Backup kirim data ke Google Sheets & Google Drive
-    try {
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType }),
-      }).catch((err) => console.error("Gagal backup simpan Google Sheets:", err));
-    } catch (e) {}
+    sendToGoogleSheets({ name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType });
 
     // Kirim notifikasi pesanan baru masuk ke grup 2Founders / Admin
     if (isWaReady && settings.coordWa) {
