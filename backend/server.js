@@ -1095,47 +1095,73 @@ let chatsCache = { ts: 0, list: [] };
 const CHATS_CACHE_TTL = 15000;
 
 async function fetchChatsFromStore() {
-  if (!isWaReady || !waClient || !waClient.pupPage) return [];
+  if (!isWaReady || !waClient) return [];
 
+  // Strategi 1: Official whatsapp-web.js getChats() (PRIMARY)
   try {
-    const list = await waClient.pupPage.evaluate(() => {
+    const chats = await waClient.getChats();
+    if (Array.isArray(chats) && chats.length > 0) {
       const out = [];
       const seen = new Set();
+      for (const c of chats) {
+        if (!c || !c.id) continue;
+        const jid = c.id._serialized || (typeof c.id === "string" ? c.id : (c.id.user ? c.id.user + (c.isGroup ? "@g.us" : "@c.us") : ""));
+        const rawName = c.name || c.formattedTitle || c.title || c.id.user || "";
+        const name = String(rawName || jid).trim();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
 
-      // Method 1: window.Store.Chat.models (Standard WWebJS Internal Store)
+        const isGroup = Boolean(c.isGroup || (jid && jid.endsWith("@g.us")));
+        out.push({
+          type: isGroup ? "group" : "wa",
+          name: name,
+          phone: jid ? jid.replace(/@.*$/, "") : name,
+          id: jid || name,
+        });
+      }
+
+      if (out.length > 0) {
+        console.log(`✅ [fetchChatsFromStore OK] getChats() returned ${out.length} chats!`);
+        return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ getChats() error:", err && (err.message || err));
+  }
+
+  // Strategi 2: DOM & window.Store Fallback (100% Reliable)
+  try {
+    if (!waClient.pupPage) return [];
+    const directChats = await waClient.pupPage.evaluate(() => {
+      const list = [];
+      const seen = new Set();
+
       try {
-        if (window.Store && window.Store.Chat && (window.Store.Chat.models || window.Store.Chat._models)) {
-          const models = window.Store.Chat.models || window.Store.Chat._models || [];
-          for (const m of models) {
-            if (!m || !m.id) continue;
-            const jid = m.id._serialized || String(m.id);
-            if (!jid || !jid.includes("@")) continue;
-
-            const name = m.name || m.formattedTitle || m.title || jid.replace(/@.*$/, "");
-            if (name && !seen.has(name)) {
-              seen.add(name);
-              const isGroup = Boolean(m.isGroup || jid.endsWith("@g.us"));
-              out.push({
-                type: isGroup ? "group" : "wa",
-                name: String(name),
-                phone: jid.replace(/@.*$/, ""),
-                id: jid,
-              });
-            }
+        const models = (window.Store && window.Store.Chat) ? (window.Store.Chat.models || window.Store.Chat._models || []) : [];
+        for (const m of models) {
+          if (!m || !m.id) continue;
+          const jid = m.id._serialized || String(m.id);
+          const name = m.name || m.formattedTitle || m.title || "";
+          if (name && !seen.has(name)) {
+            seen.add(name);
+            const isGroup = Boolean(m.isGroup || (jid && jid.endsWith("@g.us")));
+            list.push({
+              type: isGroup ? "group" : "wa",
+              name: String(name),
+              phone: jid ? jid.replace(/@.*$/, "") : name,
+              id: jid || name,
+            });
           }
         }
       } catch (e) {}
 
-      // Method 2: Extract real JID (@g.us / @c.us) from React Fiber elements on #pane-side
       try {
         const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"]'));
         for (const row of rows) {
           let name = "";
           let jid = "";
           const titleEl = row.querySelector('span[title]');
-          if (titleEl) {
-            name = (titleEl.getAttribute('title') || titleEl.textContent || "").trim();
-          }
+          if (titleEl) name = (titleEl.getAttribute('title') || titleEl.textContent || "").trim();
 
           for (const key in row) {
             if (key.startsWith('__reactFiber') || key.startsWith('__reactProps')) {
@@ -1160,50 +1186,25 @@ async function fetchChatsFromStore() {
             }
           }
 
-          if (name && jid && jid.includes("@") && !seen.has(name)) {
+          if (name && !seen.has(name)) {
             seen.add(name);
-            const isGroup = Boolean(jid.endsWith("@g.us"));
-            out.push({
+            const isGroup = Boolean((jid && jid.endsWith("@g.us")) || name.toLowerCase().includes("grup") || name.toLowerCase().includes("group") || name.toLowerCase().includes("founder"));
+            list.push({
               type: isGroup ? "group" : "wa",
               name: name,
-              phone: jid.replace(/@.*$/, ""),
-              id: jid,
+              phone: jid ? jid.replace(/@.*$/, "") : name,
+              id: jid || name,
             });
           }
         }
       } catch (e) {}
 
-      return out;
+      return list;
     });
 
-    if (Array.isArray(list) && list.length > 0) {
-      console.log(`✅ [fetchChatsFromStore OK] Found ${list.length} chats with valid @g.us / @c.us JIDs!`);
-      return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    }
-  } catch (err) {
-    console.warn("⚠️ Error fetchChatsFromStore:", err && (err.message || err));
-  }
-
-  // Official waClient.getChats() fallback
-  try {
-    const chats = await waClient.getChats();
-    if (Array.isArray(chats) && chats.length > 0) {
-      const out = [];
-      for (const c of chats) {
-        if (!c || !c.id) continue;
-        const jid = c.id._serialized || (c.id.user ? c.id.user + "@c.us" : "");
-        if (!jid || !jid.includes("@")) continue;
-
-        const name = c.name || c.formattedTitle || c.title || jid.replace(/@.*$/, "");
-        const isGroup = Boolean(c.isGroup || jid.endsWith("@g.us"));
-        out.push({
-          type: isGroup ? "group" : "wa",
-          name: String(name),
-          phone: jid.replace(/@.*$/, ""),
-          id: jid,
-        });
-      }
-      return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    if (Array.isArray(directChats) && directChats.length > 0) {
+      console.log(`✅ [DOM Fallback OK] Found ${directChats.length} chats!`);
+      return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     }
   } catch (err) {}
 
