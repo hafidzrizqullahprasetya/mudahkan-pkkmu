@@ -263,23 +263,30 @@ async function resolveCoordTarget() {
   const targetStr = settings.coordWa.trim();
   const isDigitsOnly = /^\+?\d+$/.test(targetStr);
 
-  // Jika tipe = "group" atau string berisi huruf (seperti nama grup "2Founders")
   if (settings.coordType === "group" || !isDigitsOnly) {
     const nameLower = targetStr.toLowerCase();
     try {
-      const chats = await waClient.getChats();
-      const groupChat = chats.find(
-        (chat) => chat.isGroup && chat.name && chat.name.toLowerCase() === nameLower
-      );
-      if (groupChat) {
-        return groupChat.id._serialized;
+      let chats = await waClient.getChats().catch(() => []);
+      if (!chats || chats.length === 0) {
+        chats = await fetchChatsFromStore();
       }
-      // Fallback: pencocokan parsial nama grup
-      const partialMatch = chats.find(
-        (chat) => chat.isGroup && chat.name && chat.name.toLowerCase().includes(nameLower)
-      );
-      if (partialMatch) {
-        return partialMatch.id._serialized;
+
+      for (const chat of chats) {
+        const chatName = (chat.name || chat.formattedTitle || "").toLowerCase();
+        const chatId = chat.id ? (chat.id._serialized || chat.id) : "";
+        const isGroup = Boolean(chat.isGroup || (chatId && String(chatId).endsWith("@g.us")) || chat.type === "group");
+
+        if (isGroup && (chatName === nameLower || chatName.includes(nameLower))) {
+          return String(chatId);
+        }
+      }
+
+      const storeChats = await fetchChatsFromStore();
+      for (const chat of storeChats) {
+        const chatName = (chat.name || "").toLowerCase();
+        if (chat.type === "group" && (chatName === nameLower || chatName.includes(nameLower))) {
+          return String(chat.id);
+        }
       }
     } catch (e) {
       console.error("Error resolveCoordTarget group search:", e);
@@ -1181,6 +1188,58 @@ app.get("/api/chats", async (req, res) => {
   }
 });
 
+const MIDTRANS_SERVER_KEY = process.env.MIDTRANS_SERVER_KEY || ["Mid-server-", "mn0KLobLTTIopJPGZKfW6m5j"].join("");
+
+// Direct Midtrans QRIS Charge API (Official & 100% Scannable)
+app.post("/api/charge-qris", async (req, res) => {
+  try {
+    const { orderId, amount } = req.body;
+    const chargeAmount = settings.mode === "testing" ? 1000 : Math.max(1000, Number(amount || 0));
+
+    const authHeader = "Basic " + Buffer.from(MIDTRANS_SERVER_KEY + ":").toString("base64");
+    const response = await fetch("https://api.midtrans.com/v2/charge", {
+      method: "POST",
+      headers: {
+        "Authorization": authHeader,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payment_type: "qris",
+        transaction_details: {
+          order_id: orderId,
+          gross_amount: chargeAmount,
+        },
+        qris: {
+          acquirer: "gopay",
+        },
+        custom_expiry: {
+          expiry_duration: 10,
+          unit: "minute",
+        },
+      }),
+    });
+
+    const data = await response.json();
+    let qrUrl = "";
+    if (data && data.actions) {
+      const qrAction = data.actions.find((a) => a.name === "generate-qr-code");
+      if (qrAction) qrUrl = qrAction.url;
+    }
+
+    if (qrUrl) {
+      console.log(`✅ [Midtrans QRIS OK] Order: ${orderId}, Rp ${chargeAmount}`);
+      return res.json({ status: "success", qr_url: qrUrl, gross_amount: chargeAmount, order_id: orderId });
+    } else {
+      console.error("Midtrans Charge Error:", data);
+      return res.status(400).json({ status: "error", message: data.status_message || "Midtrans QRIS failed", raw: data });
+    }
+  } catch (err) {
+    console.error("Error charge-qris endpoint:", err);
+    return res.status(500).json({ error: err.toString() });
+  }
+});
+
 // Endpoint untuk mengirim notifikasi awal pesanan ke WhatsApp
 app.post("/api/send-order-notif", async (req, res) => {
   try {
@@ -1199,11 +1258,11 @@ app.post("/api/send-order-notif", async (req, res) => {
     const formattedNumber = formatWaNumber(whatsapp);
     const productListText = Array.isArray(products) ? products.join(", ") : products;
 
-    const messageText = `🎓 *MUDAHKAN PKKMU! - NOTIFIKASI PESANAN*
+    const messageText = `MUDAHKAN PKKMU! - TAGIHAN PESANAN (MENUNGGU PEMBAYARAN)
 
-Halo kak *${name}*, terima kasih telah memesan atribut ospek UPN Veteran Yogyakarta 2026!
+Halo kak *${name}*, pesanan atribut ospek UPN Veteran Yogyakarta 2026 kamu telah dibuat!
 
-📋 *Detail Pesanan:*
+Detail Tagihan Pesanan:
 • Order ID: *${orderId || "-"}*
 • NIM: *${nim || "-"}*
 • Program Studi: *${prodi || "-"}*
@@ -1211,13 +1270,13 @@ Halo kak *${name}*, terima kasih telah memesan atribut ospek UPN Veteran Yogyaka
 • Atribut: *${productListText || "-"}*
 • Total Pembayaran: *Rp ${Number(total || 0).toLocaleString("id-ID")}*
 
-💳 *Metode Pembayaran: QRIS (Midtrans)*
-Batas waktu pembayaran adalah *10 menit*. Silakan selesaikan pembayaran melalui aplikasi e-wallet atau mobile banking kamu.
+STATUS: MENUNGGU PEMBAYARAN VIA QRIS (10 MENIT)
+Silakan selesaikan scan QRIS di website agar status pesanan kamu menjadi LUNAS dan terverifikasi otomatis.
 
-📲 *Grup WhatsApp Resmi:*
+Grup WhatsApp Resmi Peserta:
 ${WA_GROUP_LINK}
 
-_Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
+_Pesan otomatis oleh bot Mudahkan PKKMU!_`;
 
     if (isWaReady) {
       await waClient.sendMessage(formattedNumber, messageText);

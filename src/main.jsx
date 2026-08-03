@@ -676,7 +676,7 @@ function App() {
           total: total,
         };
 
-        const chargeTotal = payMode === "testing" ? 1 : total;
+        const chargeTotal = payMode === "testing" ? 1000 : total;
 
         if (BACKEND_URL) {
           fetch(`${BACKEND_URL}/api/send-order-notif`, {
@@ -686,7 +686,25 @@ function App() {
           }).catch((e) => console.log("WA notification error:", e));
         }
 
-        if (GOOGLE_SCRIPT_URL) {
+        let qrisDirect = null;
+        if (BACKEND_URL) {
+          try {
+            const qrisRes = await fetch(`${BACKEND_URL}/api/charge-qris`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId: generatedOrderId, amount: total }),
+            });
+            if (qrisRes.ok) {
+              qrisDirect = await qrisRes.json();
+            }
+          } catch (e) {
+            console.log("Direct QRIS charge error:", e);
+          }
+        }
+
+        if (qrisDirect && qrisDirect.qr_url) {
+          setPaymentData(qrisDirect);
+        } else if (GOOGLE_SCRIPT_URL) {
           const res = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -697,23 +715,23 @@ function App() {
             setPaymentData({ ...result, gross_amount: chargeTotal });
           } else {
             setPaymentData({
-              qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
+              qr_url: "",
               order_id: generatedOrderId,
               gross_amount: chargeTotal,
             });
           }
         } else {
           setPaymentData({
-            qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
+            qr_url: "",
             order_id: generatedOrderId,
             gross_amount: chargeTotal,
           });
         }
       } catch (err) {
         console.error("Gagal mengirim data ke Backend:", err);
-        const chargeTotal = payMode === "testing" ? 1 : total;
+        const chargeTotal = payMode === "testing" ? 1000 : total;
         setPaymentData({
-          qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
+          qr_url: "",
           order_id: generatedOrderId,
           gross_amount: chargeTotal,
         });
@@ -819,7 +837,7 @@ function App() {
           <div>
             <h2>Mencakup Seluruh<br />Lini PKKBN.</h2>
             <p>
-              <strong>Mudahkan PKKMU!</strong> siap mencover kebutuhan atribut untuk <strong>PKKBN Pusat UPNVYK</strong> dan <strong>5 Fakultas</strong> di lingkungan kampus. Klik kartu untuk mengunjungi akun Instagram resmi.
+              <strong>Mudahkan PKKMU!</strong> siap mencover kebutuhan atribut untuk <strong>5 Fakultas</strong> di lingkungan kampus. Klik kartu untuk mengunjungi akun Instagram resmi.
             </p>
           </div>
         </div>
@@ -1058,7 +1076,7 @@ function App() {
               <div className="qris-timer-box">
                 <span className="timer-label">Batas Waktu:</span>
                 <span className={`timer-digits ${timeLeft <= 120 ? "timer-digits--warning" : ""}`}>
-                  ⏱️ {formatTime(timeLeft)}
+                  {formatTime(timeLeft)}
                 </span>
               </div>
             </div>
@@ -1070,15 +1088,15 @@ function App() {
               </div>
 
               <div className="qris-qr-wrapper">
-                {timeLeft > 0 ? (
+                {timeLeft > 0 && paymentData?.qr_url ? (
                   <img
-                    src={paymentData?.qr_url || `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${total}`}
+                    src={paymentData.qr_url}
                     alt="Kode QRIS Pembayaran Midtrans"
                     className="qris-qr-code"
                   />
                 ) : (
                   <div className="qris-expired-notice">
-                    <span className="expired-icon">⌛</span>
+                    <span className="expired-badge">EXPIRED</span>
                     <strong>Waktu Pembayaran Habis (10 Menit)</strong>
                     <small>Silakan tutup dan isi ulang formulir untuk membuat transaksi baru.</small>
                   </div>
@@ -1086,7 +1104,7 @@ function App() {
               </div>
 
               <div className="qris-merchant-notice">
-                <span>ℹ️</span>
+                <span className="info-badge">INFO</span>
                 <span>Saat di-scan, nama merchant resmi yang muncul adalah <b>Pempek Asli Wong Kito</b>.</span>
               </div>
 
@@ -1096,7 +1114,7 @@ function App() {
               </div>
 
               {payMode === "testing" && (
-                <div className="qris-testing-badge">🧪 MODE TESTING — TRANSAKSI UJI (Rp 1)</div>
+                <div className="qris-testing-badge">MODE TESTING — TRANSAKSI UJI (RP 1.000)</div>
               )}
 
               <div className="qris-order-details">
