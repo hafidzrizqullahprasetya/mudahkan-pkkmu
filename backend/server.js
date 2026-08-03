@@ -257,57 +257,50 @@ async function resolveCoordTarget() {
   if (!settings.coordWa || !isWaReady) return null;
 
   const targetStr = settings.coordWa.trim();
-  const isDigitsOnly = /^\+?\d+$/.test(targetStr);
-
-  if (targetStr.includes("@")) {
+  if (targetStr.endsWith("@g.us") || targetStr.endsWith("@c.us")) {
     return targetStr;
   }
 
-  if (settings.coordType === "group" || !isDigitsOnly) {
-    const nameClean = targetStr.toLowerCase().replace(/[^a-z0-9]/g, "");
-    try {
-      let chats = await waClient.getChats().catch(() => []);
-      if (!chats || chats.length === 0) {
-        chats = await fetchChatsFromStore();
-      }
+  const isDigitsOnly = /^\+?\d+$/.test(targetStr);
+  const nameClean = targetStr.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-      for (const chat of chats) {
-        const rawName = String(chat.name || chat.formattedTitle || chat.title || "");
-        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const chatId = chat.id ? (chat.id._serialized || chat.id) : "";
-        const isGroup = Boolean(chat.isGroup || (chatId && String(chatId).endsWith("@g.us")) || chat.type === "group");
+  try {
+    let chats = await waClient.getChats().catch(() => []);
+    for (const chat of chats) {
+      if (!chat || !chat.id || !chat.id._serialized) continue;
+      const chatId = String(chat.id._serialized);
+      if (!chatId.endsWith("@g.us") && !chatId.endsWith("@c.us")) continue;
 
-        if (isGroup && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-          console.log(`🎯 [resolveCoordTarget OK] Group "${rawName}" -> JID: ${chatId}`);
-          return String(chatId);
-        }
-      }
+      const rawName = String(chat.name || chat.formattedTitle || chat.title || "");
+      const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const isGroup = Boolean(chat.isGroup || chatId.endsWith("@g.us"));
 
-      const storeChats = await fetchChatsFromStore();
-      for (const chat of storeChats) {
-        const rawName = String(chat.name || "");
-        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-        if (chat.type === "group" && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-          console.log(`🎯 [resolveCoordTarget Store OK] Group "${rawName}" -> JID: ${chat.id}`);
-          return String(chat.id);
-        }
+      if (isGroup && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+        console.log(`🎯 [resolveCoordTarget OK] Group "${rawName}" -> Valid JID: ${chatId}`);
+        return chatId;
       }
-
-      for (const chat of chats) {
-        const rawName = String(chat.name || "");
-        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const chatId = chat.id ? (chat.id._serialized || chat.id) : "";
-        if (chatNameClean.includes(nameClean)) {
-          console.log(`🎯 [resolveCoordTarget Fallback OK] Chat "${rawName}" -> JID: ${chatId}`);
-          return String(chatId);
-        }
-      }
-    } catch (e) {
-      console.error("Error resolveCoordTarget group search:", e);
     }
+
+    const storeChats = await fetchChatsFromStore();
+    for (const chat of storeChats) {
+      const chatId = String(chat.id || "");
+      if (!chatId.endsWith("@g.us") && !chatId.endsWith("@c.us")) continue;
+
+      const rawName = String(chat.name || "");
+      const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (chat.type === "group" && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+        console.log(`🎯 [resolveCoordTarget Store OK] Group "${rawName}" -> Valid JID: ${chatId}`);
+        return chatId;
+      }
+    }
+  } catch (e) {
+    console.error("Error resolveCoordTarget group search:", e);
   }
 
-  return formatWaNumber(targetStr);
+  if (isDigitsOnly) {
+    return formatWaNumber(targetStr);
+  }
+  return null;
 }
 
 // Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
@@ -1254,8 +1247,11 @@ app.post("/api/charge-qris", async (req, res) => {
   }
 });
 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwYhGuKRLB5dWD4gTR6W3dG4SEwBX-YfgVuomj_3D6Iqy9_2Nf7DiBR98D8N20QOiVl-A/exec";
+
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   const { orderId } = req.query;
   if (!orderId) return res.json({ paid: false });
 
@@ -1269,7 +1265,7 @@ app.get("/api/check-order-status", (req, res) => {
 // Endpoint untuk menyimpan pesanan awal & notifikasi ke grup koordinasi admin 2Founders
 app.post("/api/send-order-notif", async (req, res) => {
   try {
-    const { name, nim, prodi, faculty, whatsapp, products, total, orderId } = req.body;
+    const { name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType } = req.body;
 
     if (!whatsapp) {
       return res.status(400).json({ error: "Nomor WhatsApp wajib diisi." });
@@ -1279,6 +1275,15 @@ app.post("/api/send-order-notif", async (req, res) => {
     if (orderId) {
       ordersStore[orderId] = orderData;
     }
+
+    // Backup kirim data ke Google Sheets & Google Drive
+    try {
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType }),
+      }).catch((err) => console.error("Gagal backup simpan Google Sheets:", err));
+    } catch (e) {}
 
     // Kirim notifikasi pesanan baru masuk ke grup 2Founders / Admin
     if (isWaReady && settings.coordWa) {

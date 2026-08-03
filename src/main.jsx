@@ -585,7 +585,7 @@ function App() {
     if (!submitted || !paymentData?.order_id || isPaid) return;
     const interval = setInterval(() => {
       if (!BACKEND_URL) return;
-      fetch(`${BACKEND_URL}/api/check-order-status?orderId=${paymentData.order_id}`)
+      fetch(`${BACKEND_URL}/api/check-order-status?orderId=${paymentData.order_id}&_t=${Date.now()}`, { cache: "no-store" })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && data.paid) {
@@ -725,6 +725,7 @@ function App() {
         if (GOOGLE_SCRIPT_URL) {
           fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
+            mode: "no-cors",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify({ ...payload, total: chargeTotal }),
           }).catch((e) => console.log("Google Sheets save error:", e));
