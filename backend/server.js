@@ -221,82 +221,110 @@ async function resolveCoordTarget() {
 }
 
 // Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
+function qrPageShell(title, contentHtml) {
+  return `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174b36" />
+  <title>${title} | Mudahkan PKKMU!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --green:#174b36; --green-light:#b9d55f; --paper:#f2f0e9; --ink:#151714; --muted:#6b6f68; --red:#b3402a; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "DM Sans", -apple-system, sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 5vw, 48px); background: var(--ink); border-bottom: 2px solid #2a2e29; position: sticky; top: 0; z-index: 50; }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; color: var(--paper); text-decoration: none; }
+    .topbar-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--green); border: 2px solid var(--paper); font: 900 13px/1 "Barlow Condensed"; color: var(--paper); letter-spacing: 1px; }
+    .topbar-title { font: 800 15px/1 "Barlow Condensed"; letter-spacing: 0.05em; text-transform: uppercase; }
+    .topbar-title small { display: block; font: 500 10px/1 "DM Sans"; color: #8c9088; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+    .topbar-links { display: flex; gap: 6px; }
+    .topbar-link { padding: 6px 14px; font: 700 11px "DM Sans"; text-transform: uppercase; letter-spacing: 0.06em; color: #c0c4bc; text-decoration: none; border: 1.5px solid #3a3e39; transition: color 0.15s, border-color 0.15s; }
+    .topbar-link:hover { color: var(--green-light); border-color: var(--green-light); }
+    .topbar-link.primary { color: var(--ink); background: var(--green-light); border-color: var(--green-light); }
+    .topbar-link.primary:hover { background: #cde870; border-color: #cde870; }
+    .hero-strip { background: var(--green); padding: 32px clamp(16px, 5vw, 64px) 30px; border-bottom: 3px solid var(--ink); }
+    .hero-strip h1 { font: 900 clamp(32px, 5vw, 56px)/.9 "Barlow Condensed"; color: var(--paper); letter-spacing: 0.01em; text-transform: uppercase; }
+    .hero-strip h1 span { color: var(--green-light); }
+    .hero-strip p { margin-top: 8px; font-size: 13px; color: #9ac2af; }
+    .main { width: 100%; max-width: 720px; margin: 0 auto; padding: clamp(24px, 4vw, 48px) clamp(16px, 5vw, 48px); flex: 1; display: grid; place-items: start center; }
+    .card { width: 100%; padding: 32px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 5px 5px 0 var(--ink); text-align: center; }
+    .card .icon { font-size: 44px; margin-bottom: 14px; }
+    .card h2 { font: 900 30px/1 "Barlow Condensed"; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 8px; color: var(--ink); }
+    .card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+    .card img.qr { width: 260px; height: 260px; display: block; margin: 20px auto; border: 2.5px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+    .card .hint { display: block; margin-top: 12px; font-size: 12px; color: #999; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; font: 700 12px "DM Sans"; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 14px; border: 2px solid var(--ink); background: var(--paper); }
+    .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
+    .pill.ready .dot { background: #2e9e4f; }
+    .btn { display: inline-block; margin-top: 18px; padding: 12px 20px; font: 800 12px "DM Sans"; text-transform: uppercase; letter-spacing: 0.06em; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); text-decoration: none; box-shadow: 3px 3px 0 var(--green); }
+    .page-footer { padding: 20px clamp(16px, 5vw, 48px); border-top: 2px solid var(--ink); background: var(--ink); color: #5a5e57; font-size: 12px; text-align: center; }
+    .page-footer a { color: #7a9a80; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <a class="topbar-brand" href="/">
+      <div class="topbar-mark">PK</div>
+      <div class="topbar-title">Mudahkan PKKMU!<small>Scan WhatsApp</small></div>
+    </a>
+    <div class="topbar-links">
+      <a class="topbar-link" href="/">Beranda</a>
+      <a class="topbar-link primary" href="/settings">Pengaturan</a>
+    </div>
+  </nav>
+
+  <div class="hero-strip">
+    <h1>WhatsApp<br/><span>QR Code.</span></h1>
+    <p>Hubungkan akun WhatsApp ke bot — sekali saja, sesi tersimpan otomatis.</p>
+  </div>
+
+  <div class="main">
+    ${contentHtml}
+  </div>
+
+  <footer class="page-footer">
+    <span>© 2026 Mudahkan PKKMU! — <a href="https://mudahkan-pkkmu.vercel.app" target="_blank">mudahkan-pkkmu.vercel.app</a></span>
+  </footer>
+</body>
+</html>`;
+}
+
 app.get("/qr", (req, res) => {
   res.setHeader("Content-Type", "text/html");
   if (isWaReady) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>WhatsApp Bot - Connected</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f0e9; color: #151714; }
-          .card { background: #ffffff; padding: 40px; border-radius: 12px; border: 3px solid #174b36; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-          .icon { font-size: 48px; margin-bottom: 12px; }
-          h1 { color: #174b36; margin: 0 0 8px; font-size: 24px; }
-          p { color: #555; margin: 0; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="icon">✅</div>
-          <h1>WhatsApp Bot Terhubung!</h1>
-          <p>Sesi login WhatsApp aktif & siap mengabari mahasiswa baru.</p>
-        </div>
-      </body>
-      </html>
-    `);
+    return res.send(qrPageShell("Bot Terhubung", `
+      <div class="card">
+        <div class="icon">✅</div>
+        <h2>Bot Terhubung!</h2>
+        <p>Sesi WhatsApp aktif & siap mengirim notifikasi pesanan.</p>
+        <span class="pill ready" style="margin-top:18px"><span class="dot"></span> Sesi aktif</span><br/>
+        <a class="btn" href="/">Ke Beranda</a>
+      </div>
+    `));
   }
 
   if (latestQrImage) {
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Scan WhatsApp QR Code</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="refresh" content="6">
-        <style>
-          body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #151714; color: #ffffff; }
-          .card { background: #ffffff; color: #151714; padding: 32px; border-radius: 16px; text-align: center; max-width: 360px; }
-          h2 { margin: 0 0 8px; color: #174b36; }
-          p { margin: 0 0 20px; font-size: 14px; color: #666; }
-          img { width: 260px; height: 260px; display: block; margin: 0 auto; border: 2px solid #151714; }
-          small { display: block; margin-top: 16px; color: #888; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h2>Scan WhatsApp QR</h2>
-          <p>Buka WhatsApp di HP ➔ Perangkat Tertaut ➔ Scan QR Code ini:</p>
-          <img src="${latestQrImage}" alt="QR Code WhatsApp" />
-          <small>Halaman otomatis reload tiap 6 detik...</small>
-        </div>
-      </body>
-      </html>
-    `);
+    return res.send(qrPageShell("Scan WhatsApp QR", `
+      <div class="card">
+        <h2>Scan QR Code</h2>
+        <p>Buka WhatsApp di HP → <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong> → scan QR di bawah ini.</p>
+        <img class="qr" src="${latestQrImage}" alt="QR Code WhatsApp" />
+        <small>Halaman otomatis reload tiap 6 detik...</small>
+      </div>
+    `));
   }
 
-  return res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Memuat QR Code...</title>
-      <meta http-equiv="refresh" content="3">
-      <style>
-        body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f0e9; }
-        .card { background: #fff; padding: 30px; border-radius: 12px; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h3>⏳ Memuat QR Code WhatsApp...</h3>
-        <p>Silakan tunggu 3 detik...</p>
-      </div>
-    </body>
-    </html>
-  `);
+  return res.send(qrPageShell("Memuat QR", `
+    <div class="card">
+      <div class="icon">⏳</div>
+      <h2>Memuat QR Code...</h2>
+      <p>Silakan tunggu beberapa detik.</p>
+    </div>
+  `));
 });
 
 // Endpoint status server
@@ -305,8 +333,135 @@ app.get("/api/health", (req, res) => {
     status: "ok",
     app: "mudahkan-pkkmu-backend",
     whatsapp_ready: isWaReady,
+    mode: settings.mode,
     timestamp: new Date().toISOString(),
   });
+});
+
+// Halaman status /health (HTML, konsisten dengan desain dashboard)
+app.get("/health", (req, res) => {
+  const ready = isWaReady;
+  const testing = settings.mode === "testing";
+  const waDot = ready ? "dot-green" : "dot-red";
+  const waText = ready ? "Terhubung" : "Belum terhubung";
+  const modeDot = testing ? "dot-yellow" : "dot-green";
+  const modeText = testing ? "Testing" : "Production";
+  res.setHeader("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174b36" />
+  <title>Health Check | Mudahkan PKKMU!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --green:#174b36; --green-light:#b9d55f; --paper:#f2f0e9; --ink:#151714; --muted:#6b6f68; --red:#b3402a; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "DM Sans", -apple-system, sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 5vw, 48px); background: var(--ink); border-bottom: 2px solid #2a2e29; position: sticky; top: 0; z-index: 50; }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; color: var(--paper); text-decoration: none; }
+    .topbar-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--green); border: 2px solid var(--paper); font: 900 13px/1 "Barlow Condensed"; color: var(--paper); letter-spacing: 1px; }
+    .topbar-title { font: 800 15px/1 "Barlow Condensed"; letter-spacing: 0.05em; text-transform: uppercase; }
+    .topbar-title small { display: block; font: 500 10px/1 "DM Sans"; color: #8c9088; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+    .topbar-links { display: flex; gap: 6px; }
+    .topbar-link { padding: 6px 14px; font: 700 11px "DM Sans"; text-transform: uppercase; letter-spacing: 0.06em; color: #c0c4bc; text-decoration: none; border: 1.5px solid #3a3e39; transition: color 0.15s, border-color 0.15s; }
+    .topbar-link:hover { color: var(--green-light); border-color: var(--green-light); }
+    .topbar-link.primary { color: var(--ink); background: var(--green-light); border-color: var(--green-light); }
+    .topbar-link.primary:hover { background: #cde870; border-color: #cde870; }
+    .hero-strip { background: var(--green); padding: 32px clamp(16px, 5vw, 64px) 30px; border-bottom: 3px solid var(--ink); }
+    .hero-strip h1 { font: 900 clamp(32px, 5vw, 56px)/.9 "Barlow Condensed"; color: var(--paper); letter-spacing: 0.01em; text-transform: uppercase; }
+    .hero-strip h1 span { color: var(--green-light); }
+    .hero-strip p { margin-top: 8px; font-size: 13px; color: #9ac2af; }
+    .main { width: 100%; max-width: 720px; margin: 0 auto; padding: clamp(24px, 4vw, 48px) clamp(16px, 5vw, 48px); flex: 1; }
+    .status-section { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    @media (max-width: 520px) { .status-section { grid-template-columns: 1fr; } }
+    .stat-card { padding: 20px 22px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); display: flex; flex-direction: column; gap: 8px; }
+    .stat-label { font: 700 11px "DM Sans"; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+    .stat-value { font: 900 26px/1 "Barlow Condensed"; letter-spacing: 0.02em; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+    .stat-value .dot { width: 12px; height: 12px; border-radius: 50%; background: #aaa; flex-shrink: 0; }
+    .dot-green { background: #2e9e4f !important; }
+    .dot-red { background: var(--red) !important; }
+    .dot-yellow { background: #c9a227 !important; }
+    .stat-sub { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .btn { display: inline-block; margin-top: 22px; padding: 12px 20px; font: 800 12px "DM Sans"; text-transform: uppercase; letter-spacing: 0.06em; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); text-decoration: none; box-shadow: 3px 3px 0 var(--green); }
+    .page-footer { padding: 20px clamp(16px, 5vw, 48px); border-top: 2px solid var(--ink); background: var(--ink); color: #5a5e57; font-size: 12px; text-align: center; }
+    .page-footer a { color: #7a9a80; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <a class="topbar-brand" href="/">
+      <div class="topbar-mark">PK</div>
+      <div class="topbar-title">Mudahkan PKKMU!<small>Health Check</small></div>
+    </a>
+    <div class="topbar-links">
+      <a class="topbar-link" href="/">Beranda</a>
+      <a class="topbar-link primary" href="/settings">Pengaturan</a>
+    </div>
+  </nav>
+
+  <div class="hero-strip">
+    <h1>Server<br/><span>Status.</span></h1>
+    <p>Status real-time backend, bot WhatsApp, dan mode pembayaran.</p>
+  </div>
+
+  <div class="main">
+    <div class="status-section">
+      <div class="stat-card">
+        <div class="stat-label">WhatsApp Bot</div>
+        <div class="stat-value"><span class="dot ${waDot}"></span>${waText}</div>
+        <div class="stat-sub" id="waSub">Memeriksa...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mode Pembayaran</div>
+        <div class="stat-value"><span class="dot ${modeDot}"></span>${modeText}</div>
+        <div class="stat-sub" id="modeSub">Memuat pengaturan...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Server</div>
+        <div class="stat-value"><span class="dot dot-green"></span>Online</div>
+        <div class="stat-sub">notif-pkk.pempekasliwongkito.my.id</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Response</div>
+        <div class="stat-value"><span class="dot dot-green"></span><span id="respText">—</span></div>
+        <div class="stat-sub">Waktu respons terakhir</div>
+      </div>
+    </div>
+    <a class="btn" href="/api/health">Lihat JSON Raw ↗</a>
+  </div>
+
+  <footer class="page-footer">
+    <span>© 2026 Mudahkan PKKMU! — <a href="https://mudahkan-pkkmu.vercel.app" target="_blank">mudahkan-pkkmu.vercel.app</a></span>
+  </footer>
+
+  <script>
+    const startTs = Date.now();
+    fetch("/api/health")
+      .then(r => r.json())
+      .then(d => {
+        document.getElementById("respText").textContent = ((Date.now() - startTs) / 1000).toFixed(2) + "s";
+        if (d && d.whatsapp_ready !== undefined) {
+          document.getElementById("waSub").textContent = d.whatsapp_ready
+            ? "Bot aktif dan siap mengirim notifikasi"
+            : "Scan QR Code untuk menghubungkan WhatsApp";
+        }
+        if (d && d.mode) {
+          document.getElementById("modeSub").textContent = d.mode === "testing"
+            ? "Transaksi dicharge Rp 1 (mode uji coba)"
+            : "Transaksi menggunakan harga nyata";
+        }
+      })
+      .catch(() => {
+        document.getElementById("respText").textContent = "gagal";
+        document.getElementById("waSub").textContent = "Tidak dapat menghubungi server";
+      });
+  </script>
+</body>
+</html>`);
 });
 
 // Halaman pengaturan /settings
@@ -718,16 +873,16 @@ app.get("/", (req, res) => {
       </div>
     </a>
 
-    <a class="nav-card" href="/api/health" target="_blank" rel="noopener">
+    <a class="nav-card" href="/health">
       <div class="nav-card-top">
         <span class="nav-card-num">04</span>
-        <span class="nav-card-arrow">↗</span>
+        <span class="nav-card-arrow">→</span>
       </div>
       <div class="nav-card-body">
         <div class="nav-card-icon">🩺</div>
         <div class="nav-card-title">Health Check</div>
-        <div class="nav-card-desc">Endpoint JSON untuk memeriksa status server dan koneksi WhatsApp secara real-time oleh monitoring eksternal.</div>
-        <div class="nav-card-footer">/api/health →</div>
+        <div class="nav-card-desc">Dashboard status server, koneksi WhatsApp & mode pembayaran secara real-time, lengkap dengan akses JSON mentah.</div>
+        <div class="nav-card-footer">Buka status →</div>
       </div>
     </a>
 
