@@ -1254,7 +1254,19 @@ app.post("/api/charge-qris", async (req, res) => {
   }
 });
 
-// Endpoint untuk mengirim notifikasi awal pesanan ke WhatsApp
+// Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
+app.get("/api/check-order-status", (req, res) => {
+  const { orderId } = req.query;
+  if (!orderId) return res.json({ paid: false });
+
+  const order = ordersStore[orderId];
+  if (order && order.status === "PAID") {
+    return res.json({ paid: true, status: "PAID", order });
+  }
+  return res.json({ paid: false, status: "PENDING" });
+});
+
+// Endpoint untuk menyimpan pesanan awal & notifikasi ke grup koordinasi admin 2Founders
 app.post("/api/send-order-notif", async (req, res) => {
   try {
     const { name, nim, prodi, faculty, whatsapp, products, total, orderId } = req.body;
@@ -1263,6 +1275,7 @@ app.post("/api/send-order-notif", async (req, res) => {
       return res.status(400).json({ error: "Nomor WhatsApp wajib diisi." });
     }
 
+    const orderData = { name, nim, prodi, faculty, whatsapp, products, total, orderId, status: "PENDING" };
     if (orderId) {
       ordersStore[orderId] = { name, nim, prodi, faculty, whatsapp, products, total };
     }

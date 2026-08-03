@@ -454,6 +454,10 @@ footer > strong i { color: var(--green-light); font-style: normal; }
   .qris-buttons-group { flex-direction: row; }
   .qris-buttons-group .button { flex: 1; }
 }
+.qris-paid-success { padding: 24px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; background: #ffffff; border: 2.5px solid var(--green); margin: 0; }
+.paid-icon-circle { width: 64px; height: 64px; border-radius: 50%; background: var(--green); color: var(--paper); font-size: 34px; font-weight: 900; display: grid; place-items: center; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(23,75,54,.25); }
+.paid-success-title { font: 900 32px/1 "Barlow Condensed"; color: var(--green); margin: 0 0 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+.paid-success-lead { font-size: 14px; line-height: 1.55; color: #333; margin: 0 0 16px; }
 .success-number { display: inline-block; padding: 6px 9px; color: var(--paper); background: var(--green); font: 800 12px "DM Sans"; }
 .success-modal h2 { margin: 22px 0; font: 900 clamp(48px, 7.5vw, 70px)/.86 "Barlow Condensed"; letter-spacing: .015em; text-transform: uppercase; }
 .success-modal p { max-width: 430px; font-size: 16px; line-height: 1.65; }

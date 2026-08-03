@@ -579,6 +579,23 @@ function App() {
   const [activeIgTarget, setActiveIgTarget] = useState(null);
   const [payMode, setPayMode] = useState("production");
   const [productTab, setProductTab] = useState("all");
+  const [isPaid, setIsPaid] = useState(false);
+
+  useEffect(() => {
+    if (!submitted || !paymentData?.order_id || isPaid) return;
+    const interval = setInterval(() => {
+      if (!BACKEND_URL) return;
+      fetch(`${BACKEND_URL}/api/check-order-status?orderId=${paymentData.order_id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.paid) {
+            setIsPaid(true);
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [submitted, paymentData, isPaid]);
 
   useEffect(() => {
     try {
@@ -694,7 +711,7 @@ function App() {
           total: total,
         };
 
-        const chargeTotal = payMode === "testing" ? 1000 : total;
+        const chargeTotal = payMode === "testing" ? 1 : total;
 
         if (BACKEND_URL) {
           fetch(`${BACKEND_URL}/api/send-order-notif`, {
@@ -702,6 +719,15 @@ function App() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...payload, total: chargeTotal }),
           }).catch((e) => console.log("WA notification error:", e));
+        }
+
+        // Always save to Google Sheets & Google Drive
+        if (GOOGLE_SCRIPT_URL) {
+          fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ ...payload, total: chargeTotal }),
+          }).catch((e) => console.log("Google Sheets save error:", e));
         }
 
         let qrisDirect = null;
@@ -722,40 +748,25 @@ function App() {
 
         if (qrisDirect && qrisDirect.qr_url) {
           setPaymentData(qrisDirect);
-        } else if (GOOGLE_SCRIPT_URL) {
-          const res = await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ ...payload, total: chargeTotal }),
-          });
-          const result = await res.json().catch(() => null);
-          if (result && result.qr_url) {
-            setPaymentData({ ...result, gross_amount: chargeTotal });
-          } else {
-            setPaymentData({
-              qr_url: "",
-              order_id: generatedOrderId,
-              gross_amount: chargeTotal,
-            });
-          }
         } else {
           setPaymentData({
-            qr_url: "",
+            qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
             order_id: generatedOrderId,
             gross_amount: chargeTotal,
           });
         }
       } catch (err) {
         console.error("Gagal mengirim data ke Backend:", err);
-        const chargeTotal = payMode === "testing" ? 1000 : total;
+        const chargeTotal = payMode === "testing" ? 1 : total;
         setPaymentData({
-          qr_url: "",
+          qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
           order_id: generatedOrderId,
           gross_amount: chargeTotal,
         });
       } finally {
         setIsSubmitting(false);
-        setTimeLeft(600); // Reset to 10 minutes
+        setTimeLeft(600);
+        setIsPaid(false);
         setSubmitted(true);
         try {
           localStorage.removeItem("pkkbn_order_draft");
@@ -1089,74 +1100,101 @@ function App() {
       {submitted && (
         <div className="modal-backdrop" role="presentation">
           <div className="success-modal qris-modal-card" role="dialog" aria-modal="true" aria-labelledby="qris-modal-title">
-            <div className="qris-modal-top">
-              <span className="qris-badge-tag">PEMBAYARAN VIA QRIS</span>
-              <div className="qris-timer-box">
-                <span className="timer-label">Batas Waktu:</span>
-                <span className={`timer-digits ${timeLeft <= 120 ? "timer-digits--warning" : ""}`}>
-                  {formatTime(timeLeft)}
-                </span>
-              </div>
-            </div>
-
-            <div className="qris-card-body">
-              <div className="qris-header-row">
-                <img src={qrisLogo} alt="Logo QRIS" className="qris-brand-logo" />
-                <span className="qris-merchant-title">MIDTRANS • QRIS OFFICIAL</span>
-              </div>
-
-              <div className="qris-qr-wrapper">
-                {timeLeft > 0 && paymentData?.qr_url ? (
-                  <img
-                    src={paymentData.qr_url}
-                    alt="Kode QRIS Pembayaran Midtrans"
-                    className="qris-qr-code"
-                  />
-                ) : (
-                  <div className="qris-expired-notice">
-                    <span className="expired-badge">EXPIRED</span>
-                    <strong>Waktu Pembayaran Habis (10 Menit)</strong>
-                    <small>Silakan tutup dan isi ulang formulir untuk membuat transaksi baru.</small>
-                  </div>
-                )}
-              </div>
-
-              <div className="qris-merchant-notice">
-                <span className="info-badge">INFO</span>
-                <span>Saat di-scan, nama merchant resmi yang muncul adalah <b>Pempek Asli Wong Kito</b>.</span>
-              </div>
-
-              <div className="qris-amount-row">
-                <span>Total Pembayaran</span>
-                <strong>{rupiah(paymentData?.gross_amount || total)}</strong>
-              </div>
-
-              {payMode === "testing" && (
-                <div className="qris-testing-badge">MODE TESTING — TRANSAKSI UJI (RP 1)</div>
-              )}
-
-              <div className="qris-order-details">
-                <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id || `PKKMU-${Date.now()}`}</b></div>
-                <div className="order-detail-line"><span>Merchant:</span><b>Pempek Asli Wong Kito (Midtrans)</b></div>
-                <div className="order-detail-line"><span>Metode:</span><b>QRIS (GoPay, OVO, Dana, ShopeePay, BCA, dll)</b></div>
-              </div>
-            </div>
-
-            <div className="qris-modal-actions">
-              <p className="qris-scan-help">Scan Kode QRIS menggunakan aplikasi E-Wallet atau Mobile Banking kamu.</p>
-              <div className="qris-buttons-group">
-                <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
-                  Sudah Bayar? Masuk grup WhatsApp ↗
+            {isPaid ? (
+              <div className="qris-card-body qris-paid-success">
+                <div className="paid-icon-circle">✓</div>
+                <h2 className="paid-success-title">PEMBAYARAN BERHASIL!</h2>
+                <p className="paid-success-lead">
+                  Terima kasih kak <b>{formData.name || "Peserta"}</b>! Pembayaran sebesar <b>{rupiah(paymentData?.gross_amount || 1)}</b> telah kami terima.
+                </p>
+                <div className="qris-order-details" style={{ margin: "16px 0", width: "100%" }}>
+                  <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id}</b></div>
+                  <div className="order-detail-line"><span>Status:</span><b style={{ color: "#174b36" }}>LUNAS (VERIFIED)</b></div>
+                </div>
+                <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer" style={{ width: "100%", marginTop: "12px" }}>
+                  LANGSUNG MASUK GRUP WHATSAPP ↗
                 </a>
                 <button
                   type="button"
                   className="button button--cancel"
+                  style={{ width: "100%", marginTop: "10px" }}
                   onClick={() => setSubmitted(false)}
                 >
                   Tutup / Selesai
                 </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="qris-modal-top">
+                  <span className="qris-badge-tag">PEMBAYARAN VIA QRIS</span>
+                  <div className="qris-timer-box">
+                    <span className="timer-label">Batas Waktu:</span>
+                    <span className={`timer-digits ${timeLeft <= 120 ? "timer-digits--warning" : ""}`}>
+                      {formatTime(timeLeft)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="qris-card-body">
+                  <div className="qris-header-row">
+                    <img src={qrisLogo} alt="Logo QRIS" className="qris-brand-logo" />
+                    <span className="qris-merchant-title">MIDTRANS • QRIS OFFICIAL</span>
+                  </div>
+
+                  <div className="qris-qr-wrapper">
+                    {timeLeft > 0 && paymentData?.qr_url ? (
+                      <img
+                        src={paymentData.qr_url}
+                        alt="Kode QRIS Pembayaran Midtrans"
+                        className="qris-qr-code"
+                      />
+                    ) : (
+                      <div className="qris-expired-notice">
+                        <span className="expired-badge">EXPIRED</span>
+                        <strong>Waktu Pembayaran Habis (10 Menit)</strong>
+                        <small>Silakan tutup dan isi ulang formulir untuk membuat transaksi baru.</small>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="qris-merchant-notice">
+                    <span className="info-badge">INFO</span>
+                    <span>Saat di-scan, nama merchant resmi yang muncul adalah <b>Pempek Asli Wong Kito</b>.</span>
+                  </div>
+
+                  <div className="qris-amount-row">
+                    <span>Total Pembayaran</span>
+                    <strong>{rupiah(paymentData?.gross_amount || total)}</strong>
+                  </div>
+
+                  {payMode === "testing" && (
+                    <div className="qris-testing-badge">MODE TESTING — TRANSAKSI UJI (RP 1)</div>
+                  )}
+
+                  <div className="qris-order-details">
+                    <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id || `PKKMU-${Date.now()}`}</b></div>
+                    <div className="order-detail-line"><span>Merchant:</span><b>Pempek Asli Wong Kito (Midtrans)</b></div>
+                    <div className="order-detail-line"><span>Metode:</span><b>QRIS (GoPay, OVO, Dana, ShopeePay, BCA, dll)</b></div>
+                  </div>
+                </div>
+
+                <div className="qris-modal-actions">
+                  <p className="qris-scan-help">Scan Kode QRIS menggunakan aplikasi E-Wallet atau Mobile Banking kamu.</p>
+                  <div className="qris-buttons-group">
+                    <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
+                      Sudah Bayar? Masuk grup WhatsApp ↗
+                    </a>
+                    <button
+                      type="button"
+                      className="button button--cancel"
+                      onClick={() => setSubmitted(false)}
+                    >
+                      Tutup / Selesai
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
