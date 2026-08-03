@@ -1079,25 +1079,34 @@ let chatsCache = { ts: 0, list: [] };
 const CHATS_CACHE_TTL = 15000;
 
 async function fetchChatsFromStore() {
-  try {
-    const chats = await waClient.getChats();
-    const out = [];
-    for (const c of chats) {
-      if (!c || !c.id || !c.id._serialized) continue;
-      const isGroup = c.isGroup || c.id._serialized.endsWith("@g.us");
-      out.push({
-        type: isGroup ? "group" : "wa",
-        name: c.name || c.formattedTitle || c.id.user || (isGroup ? "Grup tanpa nama" : "Kontak tanpa nama"),
-        phone: c.id.user || "",
-        id: c.id._serialized,
-        inviteCode: c.inviteCode || "",
-      });
+  if (!isWaReady || !waClient || !waClient.pupPage) return [];
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const chats = await waClient.getChats();
+      if (!Array.isArray(chats)) continue;
+
+      const out = [];
+      for (const c of chats) {
+        if (!c || !c.id || !c.id._serialized) continue;
+        const isGroup = Boolean(c.isGroup || c.id._serialized.endsWith("@g.us"));
+        out.push({
+          type: isGroup ? "group" : "wa",
+          name: c.name || c.formattedTitle || c.id.user || (isGroup ? "Grup tanpa nama" : "Kontak tanpa nama"),
+          phone: c.id.user || "",
+          id: c.id._serialized,
+          inviteCode: c.inviteCode || "",
+        });
+      }
+      return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } catch (err) {
+      console.warn(`⚠️ Gagal getChats() (percobaan ${attempt}):`, err && (err.message || err));
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
     }
-    return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  } catch (err) {
-    console.error("Gagal getChats() dari WhatsApp Client:", err);
-    return [];
   }
+  return [];
 }
 
 app.get("/api/chats", async (req, res) => {
@@ -1257,8 +1266,4 @@ _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
     console.error("Webhook Error:", err);
     res.status(500).json({ error: err.toString() });
   }
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Node.js Backend & WA Bot berjalan di port: ${PORT}`);
 });
