@@ -419,34 +419,34 @@ footer > strong i { color: var(--green-light); font-style: normal; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 999999 !important; display: grid; place-items: center; padding: 16px; background: rgba(15,17,14,.88); overflow-y: auto; }
 .success-modal { width: min(540px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 34px; color: var(--ink); background: var(--green-light); border: 8px solid var(--paper); outline: 2px solid var(--ink); box-shadow: 16px 16px 0 var(--green); }
-.qris-modal-card { width: min(520px, 94vw); max-height: calc(100dvh - 32px); overflow-y: auto; background: #faf9f4; border: 4px solid var(--ink); box-shadow: 12px 12px 0 var(--green); padding: 20px 18px; color: var(--ink); margin: auto; }
+.qris-modal-card { width: min(440px, 92vw); max-height: calc(100dvh - 32px); overflow-y: auto; background: #ffffff; border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--green); padding: 18px 16px; color: var(--ink); margin: auto; border-radius: 4px; }
 .info-badge { padding: 2px 6px; background: #6b5100; color: #fff; font: 800 10px "DM Sans"; letter-spacing: 0.5px; border-radius: 2px; flex: 0 0 auto; }
 .expired-badge { padding: 3px 8px; background: #a32e24; color: #fff; font: 800 11px "DM Sans"; letter-spacing: 0.5px; }
-.qris-modal-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.qris-modal-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1.5px solid var(--ink); }
 .qris-badge-tag { padding: 5px 10px; color: var(--paper); background: var(--green); font: 800 11px "DM Sans"; letter-spacing: .08em; text-transform: uppercase; }
 .qris-timer-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
 .timer-label { color: var(--muted); }
 .timer-digits { font: 900 18px "Barlow Condensed"; color: var(--green); letter-spacing: .05em; padding: 2px 8px; background: rgba(23,75,54,.08); border: 1.5px solid var(--green); }
 .timer-digits--warning { color: #a32e24; border-color: #a32e24; background: #fdf5f5; }
-.qris-card-body { display: flex; flex-direction: column; align-items: center; gap: 16px; background: #ffffff; padding: 20px; border: 2px solid var(--ink); margin-bottom: 20px; text-align: center; }
+.qris-card-body { display: flex; flex-direction: column; align-items: center; gap: 14px; background: #ffffff; padding: 6px 0; border: none; margin-bottom: 12px; text-align: center; }
 .qris-header-row { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .qris-brand-logo { height: 32px; object-fit: contain; }
 .qris-merchant-title { font: 800 11px "DM Sans"; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
-.qris-qr-wrapper { width: 230px; height: 230px; display: grid; place-items: center; padding: 10px; background: #ffffff; border: 2.5px solid var(--ink); margin: 6px 0; }
+.qris-qr-wrapper { width: 220px; height: 220px; display: grid; place-items: center; padding: 10px; background: #ffffff; border: 2px solid var(--ink); margin: 4px 0; }
 .qris-qr-code { width: 100%; height: 100%; object-fit: contain; }
 .qris-expired-notice { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #a32e24; }
 .expired-icon { font-size: 32px; }
 .qris-expired-notice strong { font: 800 18px "Barlow Condensed"; }
 .qris-expired-notice small { font-size: 12px; color: var(--muted); }
-.qris-merchant-notice { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff8e6; border: 1.5px solid #e5c158; color: #6b5100; font-size: 12px; line-height: 1.4; text-align: left; }
+.qris-merchant-notice { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff8e6; border: 1px solid #e5c158; color: #6b5100; font-size: 12px; line-height: 1.4; text-align: left; }
 .qris-merchant-notice b { color: #403000; font-weight: 800; }
 .qris-amount-row { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--green-light); border: 1.5px solid var(--ink); margin-top: 4px; }
 .qris-amount-row span { font-weight: 700; font-size: 13px; text-transform: uppercase; }
-.qris-amount-row strong { font: 900 24px "Barlow Condensed"; color: var(--ink); }
-.qris-order-details { width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 12px; text-align: left; padding-top: 6px; border-top: 1px dashed #ccc; }
-.qris-testing-badge { width: 100%; margin-top: 10px; padding: 8px 12px; text-align: center; background: #151714; color: #f2c33a; border: 1.5px solid #f2c33a; font: 800 12px "DM Sans"; letter-spacing: 0.6px; text-transform: uppercase; }
+.qris-amount-row strong { font: 900 26px "Barlow Condensed"; color: var(--ink); letter-spacing: 0.12em; }
+.qris-order-details { width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 12px; text-align: left; padding-top: 10px; border-top: 1px dashed #ccc; }
+.qris-testing-badge { width: 100%; margin-top: 6px; padding: 6px 10px; text-align: center; background: #151714; color: #f2c33a; border: 1px solid #f2c33a; font: 800 11px "DM Sans"; letter-spacing: 0.6px; text-transform: uppercase; }
 .order-detail-line { display: flex; justify-content: space-between; color: #444; }
-.qris-modal-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; margin-top: 14px; padding-top: 14px; border-top: 1.5px dashed #d5d3c8; }
+.qris-modal-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; margin-top: 10px; padding-top: 12px; border-top: 1px dashed #d5d3c8; }
 .qris-scan-help { font-size: 13px; color: #555850; margin: 0; text-align: center; line-height: 1.45; width: 100%; }
 .qris-buttons-group { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 .qris-buttons-group .button { width: 100%; margin-top: 0 !important; display: flex; align-items: center; justify-content: center; text-align: center; }
@@ -454,23 +454,41 @@ footer > strong i { color: var(--green-light); font-style: normal; }
   .qris-buttons-group { flex-direction: row; }
   .qris-buttons-group .button { flex: 1; }
 }
-.qris-paid-success { padding: 24px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; background: #ffffff; border: 2.5px solid var(--green); margin: 0; }
-.paid-icon-circle { width: 64px; height: 64px; border-radius: 50%; background: var(--green); color: var(--paper); font-size: 34px; font-weight: 900; display: grid; place-items: center; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(23,75,54,.25); }
+.qris-paid-success { padding: 12px 0; display: flex; flex-direction: column; align-items: center; text-align: center; background: #ffffff; border: none; margin: 0; }
+.paid-icon-circle { width: 60px; height: 60px; border-radius: 50%; background: var(--green); color: var(--paper); font-size: 32px; font-weight: 900; display: grid; place-items: center; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(23,75,54,.25); }
 .paid-icon-animated { animation: successPulse 1.2s ease-in-out infinite alternate; }
 @keyframes successPulse {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(23,75,54,0.4); }
   100% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(23,75,54,0); }
 }
-.paid-success-title { font: 900 32px/1 "Barlow Condensed"; color: var(--green); margin: 0 0 10px; letter-spacing: 0.5px; text-transform: uppercase; }
-.paid-success-lead { font-size: 14px; line-height: 1.55; color: #333; margin: 0 0 16px; }
+.paid-success-title { font: 900 30px/1 "Barlow Condensed"; color: var(--green); margin: 0 0 8px; letter-spacing: 0.5px; text-transform: uppercase; }
+.paid-success-lead { font-size: 14px; line-height: 1.5; color: #333; margin: 0 0 14px; }
+.paid-success-lead b { font-weight: 800; letter-spacing: 0.08em; }
 .success-number { display: inline-block; padding: 6px 9px; color: var(--paper); background: var(--green); font: 800 12px "DM Sans"; }
 .success-modal h2 { margin: 22px 0; font: 900 clamp(48px, 7.5vw, 70px)/.86 "Barlow Condensed"; letter-spacing: .015em; text-transform: uppercase; }
 .success-modal p { max-width: 430px; font-size: 16px; line-height: 1.65; }
 .success-modal > div { margin: 26px 0; padding: 14px 0; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); font-size: 12px; }
-.success-modal > div strong { font: 800 24px "Barlow Condensed"; }
+.success-modal > div strong { font: 800 24px "Barlow Condensed"; letter-spacing: 0.08em; }
 .whatsapp-button { width: 100%; color: var(--paper); background: #174b36; border-color: #174b36; }
 .whatsapp-button:hover { color: var(--ink); background: var(--paper); }
 .success-modal > small { display: block; margin-top: 12px; color: #3f4a36; font-size: 12px; line-height: 1.55; text-align: center; }
+
+.spinner-icon {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.summary-total b { font: 900 24px "Barlow Condensed"; letter-spacing: 0.08em; }
 
 .confirm-modal { width: min(440px, 90vw); padding: 24px 26px; color: var(--ink); background: var(--paper); border: 4px solid var(--ink); box-shadow: 8px 8px 0 var(--green); }
 .confirm-tag { display: inline-block; padding: 4px 8px; color: var(--paper); background: var(--green); font: 800 11px "DM Sans"; letter-spacing: .08em; text-transform: uppercase; }

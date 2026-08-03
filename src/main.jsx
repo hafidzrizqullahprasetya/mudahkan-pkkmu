@@ -678,6 +678,26 @@ function App() {
     setErrors((current) => ({ ...current, products: undefined }));
   };
 
+  const handleCloseAndReset = () => {
+    setSubmitted(false);
+    setPaymentData(null);
+    setIsPaid(false);
+    setFormData({
+      name: "",
+      nim: "",
+      whatsapp: "",
+    });
+    setSelectedFaculty("");
+    setSelectedProdi("");
+    setSelectedProducts([]);
+    setCocardOption("both");
+    setPhotoPreview("");
+    setErrors({});
+    try {
+      localStorage.removeItem("pkkbn_order_draft");
+    } catch (e) {}
+  };
+
   const scrollToForm = () => {
     const formSection = document.getElementById("pesan");
     if (formSection) {
@@ -1096,7 +1116,11 @@ function App() {
             <label className="terms"><input name="agreement" type="checkbox" /><span>Saya sudah memeriksa data dan memahami bahwa saya wajib masuk grup WhatsApp setelah submit.</span></label>
             {errors.agreement && <small className="error summary-error">{errors.agreement}</small>}
             <button className="button button--submit" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Mengirim data..." : <>Kirim pesanan <span>→</span></>}
+              {isSubmitting ? (
+                <><span className="spinner-icon" />Mengirim data...</>
+              ) : (
+                <>Kirim pesanan <span>→</span></>
+              )}
             </button>
           </div>
         </form>
@@ -1130,26 +1154,26 @@ function App() {
 
       {submitted && (
         <div className="modal-backdrop" role="presentation">
-          <div className="success-modal qris-modal-card" role="dialog" aria-modal="true" aria-labelledby="qris-modal-title">
+          <div className="qris-modal-card" role="dialog" aria-modal="true" aria-labelledby="qris-modal-title">
             {isPaid ? (
-              <div className="qris-card-body qris-paid-success">
-                <div className="paid-icon-circle">✓</div>
+              <div className="qris-paid-success">
+                <div className="paid-icon-circle paid-icon-animated">✓</div>
                 <h2 className="paid-success-title">PEMBAYARAN BERHASIL!</h2>
                 <p className="paid-success-lead">
                   Terima kasih kak <b>{formData.name || "Peserta"}</b>! Pembayaran sebesar <b>{rupiah(paymentData?.gross_amount || 1)}</b> telah kami terima.
                 </p>
-                <div className="qris-order-details" style={{ margin: "16px 0", width: "100%" }}>
+                <div className="qris-order-details" style={{ margin: "12px 0 16px", width: "100%" }}>
                   <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id}</b></div>
                   <div className="order-detail-line"><span>Status:</span><b style={{ color: "#174b36" }}>LUNAS (VERIFIED)</b></div>
                 </div>
-                <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer" style={{ width: "100%", marginTop: "12px" }}>
+                <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer" style={{ width: "100%", marginTop: "4px" }}>
                   LANGSUNG MASUK GRUP WHATSAPP ↗
                 </a>
                 <button
                   type="button"
                   className="button button--cancel"
                   style={{ width: "100%", marginTop: "10px" }}
-                  onClick={() => setSubmitted(false)}
+                  onClick={handleCloseAndReset}
                 >
                   Tutup / Selesai
                 </button>
@@ -1224,7 +1248,7 @@ function App() {
                     <button
                       type="button"
                       className="button button--cancel"
-                      onClick={() => setSubmitted(false)}
+                      onClick={handleCloseAndReset}
                     >
                       Batalkan / Tutup
                     </button>
