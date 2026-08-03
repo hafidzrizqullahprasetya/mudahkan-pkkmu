@@ -31,6 +31,7 @@ const DEFAULT_PIN = process.env.SETTINGS_PIN || "pkkmu2026";
 let settings = {
   mode: "production", // "production" | "testing"
   coordWa: "",        // Nomor WA koordinator (khusus koordinasi)
+  coordType: "wa",    // "wa" (nomor) | "group" (nama grup WhatsApp)
   pin: DEFAULT_PIN,
 };
 
@@ -152,6 +153,38 @@ function formatWaNumber(phone) {
   return cleaned + "@c.us";
 }
 
+// Resolve target koordinasi -> chat ID WhatsApp
+// coordType "wa"    : nomor HP -> 628xxx@c.us
+// coordType "group" : nama grup -> dicari dari daftar chat, pakai invite code jika ada
+async function resolveCoordTarget() {
+  if (!settings.coordWa || !isWaReady) return null;
+
+  if (settings.coordType === "group") {
+    const name = settings.coordWa.trim().toLowerCase();
+    const chats = await waClient.getChats();
+    const groupChat = chats.find(
+      (chat) => chat.isGroup && chat.name && chat.name.toLowerCase() === name
+    );
+    if (groupChat) {
+      return groupChat.id._serialized;
+    }
+    // Fallback: cari lewat kode undangan (link chat.whatsapp.com/<code>)
+    const byInvite = chats.find(
+      (chat) =>
+        chat.isGroup &&
+        chat.inviteCode &&
+        settings.coordWa.trim().toLowerCase().includes(chat.inviteCode.toLowerCase())
+    );
+    if (byInvite) {
+      return byInvite.id._serialized;
+    }
+    console.error(`❌ Grup koordinasi "${settings.coordWa}" tidak ditemukan di chat bot.`);
+    return null;
+  }
+
+  return formatWaNumber(settings.coordWa);
+}
+
 // Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
 app.get("/qr", (req, res) => {
   res.setHeader("Content-Type", "text/html");
@@ -246,6 +279,86 @@ app.get("/settings", (req, res) => {
   res.sendFile(path.resolve("./settings.html"));
 });
 
+// Halaman utama / (landing) agar tidak "Cannot GET /"
+app.get("/", (req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="theme-color" content="#174b36" />
+      <title>Mudahkan PKKMU! | Notifikasi Bot</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f2f0e9; color: #151714; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+        .shell { width: 100%; max-width: 560px; }
+        .hero { text-align: center; margin-bottom: 28px; }
+        .brand-mark { width: 72px; height: 72px; border-radius: 50%; background: #174b36; color: #f2f0e9; display: inline-grid; place-items: center; font-weight: 900; font-size: 26px; letter-spacing: 1px; border: 3px solid #151714; box-shadow: 5px 5px 0 #151714; margin-bottom: 18px; }
+        h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.5px; }
+        h1 span { color: #174b36; }
+        .sub { font-size: 14px; color: #555; margin-top: 6px; }
+        .card { background: #ffffff; border: 3px solid #151714; box-shadow: 8px 8px 0 #151714; padding: 26px; margin-bottom: 22px; }
+        .status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 6px 12px; border: 2px solid #151714; border-radius: 999px; background: #f2f0e9; }
+        .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
+        .pill.ready .dot { background: #2e9e4f; }
+        .pill.not-ready .dot { background: #b3402a; }
+        .links { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .btn { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid #151714; background: #174b36; color: #f2f0e9; box-shadow: 4px 4px 0 #151714; text-decoration: none; transition: transform 0.1s ease, box-shadow 0.1s ease; }
+        .btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #151714; }
+        .btn small { display: block; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 500; color: #cfe3d8; }
+        .btn--light { background: #f2f0e9; color: #151714; }
+        .btn--light small { color: #666; }
+        footer { text-align: center; font-size: 12px; color: #888; }
+      </style>
+    </head>
+    <body>
+      <div class="shell">
+        <div class="hero">
+          <span class="brand-mark">PK</span>
+          <h1>Mudahkan <span>PKKMU!</span></h1>
+          <p class="sub">Backend notifikasi pesanan & WhatsApp bot</p>
+        </div>
+
+        <div class="card">
+          <div class="status-row">
+            <span class="pill" id="waPill"><span class="dot"></span> WhatsApp: memeriksa...</span>
+            <span class="pill" id="modePill">Mode: —</span>
+          </div>
+        </div>
+
+        <div class="links">
+          <a class="btn" href="/settings">Pengaturan<small>Mode & tujuan koordinasi</small></a>
+          <a class="btn btn--light" href="/qr">Scan WhatsApp<small>QR Code bot</small></a>
+        </div>
+
+        <footer>Server notifikasi Mudahkan PKKMU! • pemekasliwongkito</footer>
+      </div>
+
+      <script>
+        fetch("/api/health")
+          .then((r) => r.json())
+          .then((d) => {
+            const pill = document.getElementById("waPill");
+            const ready = d && d.whatsapp_ready;
+            pill.className = "pill " + (ready ? "ready" : "not-ready");
+            pill.innerHTML = '<span class="dot"></span> WhatsApp: ' + (ready ? "Terhubung" : "Belum terhubung");
+          })
+          .catch(() => {});
+        fetch("/api/settings")
+          .then((r) => r.json())
+          .then((d) => {
+            document.getElementById("modePill").textContent = "Mode: " + (d && d.mode === "testing" ? "TESTING" : "PRODUCTION");
+          })
+          .catch(() => {});
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Ambil pengaturan (tanpa PIN aman? tanpa PIN hanya kembalikan mode)
 app.get("/api/settings", (req, res) => {
   const { pin } = req.query;
@@ -253,6 +366,7 @@ app.get("/api/settings", (req, res) => {
   res.json({
     mode: settings.mode,
     coordWa: isAuth ? settings.coordWa : "",
+    coordType: isAuth ? settings.coordType : "",
     locked: !isAuth,
     whatsapp_ready: isWaReady,
   });
@@ -260,7 +374,7 @@ app.get("/api/settings", (req, res) => {
 
 // Simpan pengaturan (wajib PIN)
 app.post("/api/settings", (req, res) => {
-  const { pin, mode, coordWa, newPin } = req.body || {};
+  const { pin, mode, coordWa, coordType, newPin } = req.body || {};
 
   if (!settings.pin || pin !== settings.pin) {
     return res.status(401).json({ error: "PIN salah." });
@@ -272,6 +386,9 @@ app.post("/api/settings", (req, res) => {
   if (typeof coordWa === "string") {
     settings.coordWa = coordWa.trim();
   }
+  if (coordType === "wa" || coordType === "group") {
+    settings.coordType = coordType;
+  }
   if (newPin && newPin.trim().length >= 4) {
     settings.pin = newPin.trim();
   }
@@ -281,6 +398,7 @@ app.post("/api/settings", (req, res) => {
     status: "success",
     mode: settings.mode,
     coordWa: settings.coordWa,
+    coordType: settings.coordType,
     whatsapp_ready: isWaReady,
   });
 });
@@ -327,14 +445,19 @@ _Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
       await waClient.sendMessage(formattedNumber, messageText);
       console.log(`📩 Notifikasi tagihan WA terkirim ke: ${formattedNumber}`);
 
-      // Kirim pesan koordinasi ke nomor koordinator jika sudah diset
+      // Kirim pesan koordinasi ke koordinator jika sudah diset
       if (settings.coordWa) {
         try {
-          const coordText = buildCoordOrderText(orderData, false);
-          const coordMsg = await waClient.sendMessage(formatWaNumber(settings.coordWa), coordText);
-          console.log(`🤝 Pesan koordinasi terkirim ke koordinator: ${settings.coordWa}`);
-          if (orderId && coordMsg) {
-            ordersStore[orderId].coordMessage = coordMsg;
+          const coordTarget = await resolveCoordTarget();
+          if (coordTarget) {
+            const coordText = buildCoordOrderText(orderData, false);
+            const coordMsg = await waClient.sendMessage(coordTarget, coordText);
+            console.log(`🤝 Pesan koordinasi terkirim ke koordinator: ${settings.coordWa} (${coordTarget})`);
+            if (orderId && coordMsg) {
+              ordersStore[orderId].coordMessage = coordMsg;
+            }
+          } else {
+            console.error(`⚠️ Target koordinasi tidak tersedia: ${settings.coordWa}`);
           }
         } catch (coordErr) {
           console.error("Gagal kirim pesan koordinasi:", coordErr);

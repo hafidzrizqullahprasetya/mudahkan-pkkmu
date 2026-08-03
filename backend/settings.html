@@ -200,6 +200,29 @@
       margin-top: 5px;
     }
 
+    .coord-type-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .type-option {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-align: center;
+      border: 2px solid var(--ink);
+      background: var(--cream);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .type-option.selected {
+      background: var(--green);
+      color: var(--cream);
+    }
+
     .actions {
       display: flex;
       gap: 12px;
@@ -339,8 +362,12 @@
 
       <label class="field">
         <span>Tujuan WA Koordinasi</span>
+        <div class="coord-type-row" id="coordTypeRow">
+          <div class="type-option selected" data-type="wa">Nomor WhatsApp</div>
+          <div class="type-option" data-type="group">Nama Grup</div>
+        </div>
         <input type="tel" id="coordWa" placeholder="Contoh: 081234567890" />
-        <span class="input-hint">Pesan pesanan masuk & status bayar akan dikirim ke nomor ini. Khusus koordinasi panitia.</span>
+        <span class="input-hint" id="coordHint">Pesan pesanan masuk & status bayar akan dikirim ke nomor ini. Khusus koordinasi panitia.</span>
       </label>
 
       <label class="field">
@@ -396,6 +423,7 @@
     function refreshPreview() {
       const mode = document.querySelector('input[name="mode"]:checked')?.value || "production";
       const coordWa = $("coordWa").value.trim() || "081234567890";
+      const coordType = currentCoordType || "wa";
       const total = mode === "testing" ? "1" : "25.000";
       $("preview").textContent =
 `📦 *PESANAN BARU MASUK*
@@ -411,8 +439,34 @@
 ⏳ Status: *MENUNGGU PEMBAYARAN*
 
 → (setelah bayar, pesan ini di-edit jadi SUDAH BAYAR ✅)
-Kirim ke: ${coordWa}`;
+Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
     }
+
+    let currentCoordType = "wa";
+
+    function setCoordTypeUI(type) {
+      currentCoordType = type;
+      document.querySelectorAll(".type-option").forEach((opt) => {
+        opt.classList.toggle("selected", opt.dataset.type === type);
+      });
+      const coordWa = $("coordWa");
+      if (type === "group") {
+        coordWa.type = "text";
+        coordWa.placeholder = "Contoh: Panitia PKKMU 2026";
+        $("coordHint").textContent = "Ketikan NAMA grup WhatsApp yang sudah ada di chat bot. Bot harus sudah menjadi anggota grup tersebut. Pesan masuk & status bayar akan dikirim ke grup ini.";
+      } else {
+        coordWa.type = "tel";
+        coordWa.placeholder = "Contoh: 081234567890";
+        $("coordHint").textContent = "Pesan pesanan masuk & status bayar akan dikirim ke nomor ini. Khusus koordinasi panitia.";
+      }
+    }
+
+    document.querySelectorAll(".type-option").forEach((opt) => {
+      opt.addEventListener("click", () => {
+        setCoordTypeUI(opt.dataset.type);
+        refreshPreview();
+      });
+    });
 
     function setModeUI(mode) {
       document.querySelectorAll(".mode-option").forEach((opt) => {
@@ -444,6 +498,7 @@ Kirim ke: ${coordWa}`;
       loginCard.style.display = "none";
       settingsCard.style.display = "block";
       setModeUI(data.mode || "production");
+      setCoordTypeUI(data.coordType || "wa");
       $("coordWa").value = data.coordWa || "";
       refreshPreview();
       loadWaStatus();
@@ -453,11 +508,12 @@ Kirim ke: ${coordWa}`;
     $("saveBtn").addEventListener("click", async () => {
       const mode = document.querySelector('input[name="mode"]:checked')?.value || "production";
       const coordWa = $("coordWa").value.trim();
+      const coordType = currentCoordType || "wa";
       const newPin = $("newPin").value.trim();
       const { ok, data } = await api("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: currentPin, mode, coordWa, newPin: newPin || undefined }),
+        body: JSON.stringify({ pin: currentPin, mode, coordWa, coordType, newPin: newPin || undefined }),
       });
       if (!ok) {
         showMsg(data.error || "Gagal menyimpan.", false);
@@ -466,6 +522,7 @@ Kirim ke: ${coordWa}`;
       $("newPin").value = "";
       showMsg("Pengaturan tersimpan ✓", true);
       setModeUI(data.mode);
+      setCoordTypeUI(data.coordType || "wa");
     });
 
     // Kunci lagi
