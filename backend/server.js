@@ -164,6 +164,8 @@ function createWaClient() {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--single-process",
+        "--disable-software-rasterizer",
       ],
     },
   });

@@ -53,7 +53,7 @@ ENV PORT=5760
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --production && npm rebuild better-sqlite3 --build-from-source
 
 COPY . .
 
