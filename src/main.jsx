@@ -82,15 +82,6 @@ const products = [
 
 const pkkbnScopes = [
   {
-    id: "pusat",
-    name: "PKKBN Pusat UPNVYK",
-    type: "Universitas",
-    code: "UPNVYK",
-    image: imgPusat,
-    instagramUrl: instagramUrl,
-    description: "Layanan & kelengkapan atribut resmi ospek universitas UPN Veteran Yogyakarta.",
-  },
-  {
     id: "feb",
     name: "PKKBN FEB",
     type: "Fakultas Ekonomi & Bisnis",
@@ -509,6 +500,7 @@ function App() {
   const [activeIgTarget, setActiveIgTarget] = useState(null);
   const [payMode, setPayMode] = useState("production");
   const [productTab, setProductTab] = useState("all");
+  const [cocardOption, setCocardOption] = useState("both");
 
   const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
   const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
@@ -577,6 +569,24 @@ function App() {
         if (photoFile && photoFile.size > 0) {
           photoBase64 = await fileToBase64(photoFile);
         }
+        const hasCocard = selectedProducts.some((id) =>
+          ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
+        );
+        const cocardVariantNote = hasCocard
+          ? cocardOption === "both"
+            ? "(Cocard: Pusat + Fakultas)"
+            : cocardOption === "pusat"
+            ? "(Cocard: Pusat Saja)"
+            : "(Cocard: Fakultas Saja)"
+          : "";
+
+        const formattedProducts = selectedItems.map((item) => {
+          if (["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(item.id)) {
+            return `${item.name} ${cocardVariantNote}`;
+          }
+          return item.name;
+        });
+
         const payload = {
           orderId: generatedOrderId,
           name: data.get("name")?.trim(),
@@ -587,7 +597,7 @@ function App() {
           photoName: photoFile ? photoFile.name : "",
           photoType: photoFile ? photoFile.type : "",
           photoBase64: photoBase64,
-          products: selectedItems.map((item) => item.name),
+          products: formattedProducts,
           total: total,
         };
 
@@ -789,7 +799,7 @@ function App() {
             <div className="form-grid">
               <label><span>Nama lengkap <span className="required-asterisk">*</span></span><input name="name" type="text" autoComplete="name" placeholder="Tulis nama lengkap" aria-invalid={Boolean(errors.name)} />{errors.name && <small className="error">{errors.name}</small>}</label>
               <label><span>NIM <span className="required-asterisk">*</span></span><input name="nim" type="text" inputMode="numeric" autoComplete="off" placeholder="Contoh: 111260004" aria-invalid={Boolean(errors.nim)} />{errors.nim && <small className="error">{errors.nim}</small>}</label>
-              <label><span>Pilihan PKKBN (Pusat / Fakultas) <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={(val) => { setSelectedFaculty(val); setErrors((curr) => ({ ...curr, faculty: undefined })); }} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
+              <label><span>Pilihan PKKBN Fakultas <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={(val) => { setSelectedFaculty(val); setErrors((curr) => ({ ...curr, faculty: undefined })); }} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
               <label><span>Program Studi <span className="required-asterisk">*</span></span><CustomProdiSelect options={prodiList} value={selectedProdi} onChange={(val) => { setSelectedProdi(val); setErrors((curr) => ({ ...curr, prodi: undefined })); }} error={Boolean(errors.prodi)} />{errors.prodi && <small className="error">{errors.prodi}</small>}</label>
               <label className="full-width"><span>Nomor WhatsApp <span className="required-asterisk">*</span></span><input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="Contoh: 081234567890" aria-invalid={Boolean(errors.whatsapp)} />{errors.whatsapp && <small className="error">{errors.whatsapp}</small>}</label>
               <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) <span className="required-asterisk">*</span></span><PhotoUploadInput error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
@@ -853,6 +863,59 @@ function App() {
                   );
                 })}
             </div>
+
+            {selectedProducts.some((id) => ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)) && (
+              <div className="cocard-option-box">
+                <div className="cocard-box-header">
+                  <span className="cocard-box-tag">Varian Cetak Cocard</span>
+                  <strong>Pilihan versi cetak kokard (Harga tetap sama):</strong>
+                </div>
+                <div className="cocard-radio-group">
+                  <label className={`cocard-radio ${cocardOption === "both" ? "cocard-radio--active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="cocardOption"
+                      value="both"
+                      checked={cocardOption === "both"}
+                      onChange={() => setCocardOption("both")}
+                    />
+                    <div className="cocard-radio-text">
+                      <strong>Dua-duanya (PKKBN Pusat + Fakultas) ✨</strong>
+                      <small>Dapatkan 2 kokard fisik sekaligus (Versi Pusat & Versi Fakultas) tanpa biaya tambahan!</small>
+                    </div>
+                  </label>
+
+                  <label className={`cocard-radio ${cocardOption === "pusat" ? "cocard-radio--active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="cocardOption"
+                      value="pusat"
+                      checked={cocardOption === "pusat"}
+                      onChange={() => setCocardOption("pusat")}
+                    />
+                    <div className="cocard-radio-text">
+                      <strong>PKKBN Pusat Saja</strong>
+                      <small>Cetak 1 kokard versi PKKBN Pusat UPNVYK</small>
+                    </div>
+                  </label>
+
+                  <label className={`cocard-radio ${cocardOption === "fakultas" ? "cocard-radio--active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="cocardOption"
+                      value="fakultas"
+                      checked={cocardOption === "fakultas"}
+                      onChange={() => setCocardOption("fakultas")}
+                    />
+                    <div className="cocard-radio-text">
+                      <strong>PKKBN Fakultas Saja</strong>
+                      <small>Cetak 1 kokard versi Fakultas yang kamu pilih</small>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {errors.products && <small className="error product-error">{errors.products}</small>}
           </fieldset>
 

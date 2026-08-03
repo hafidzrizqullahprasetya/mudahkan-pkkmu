@@ -299,6 +299,81 @@ main { overflow-x: clip; }
 .product-check-badge { font: 800 10px "DM Sans"; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 10px; border: 1.5px solid #c0bfb4; white-space: nowrap; }
 .product-check--active .product-check-badge { color: var(--green); border-color: var(--green); background: rgba(23,75,54,.08); }
 .product-error { display: block; margin-top: 10px; }
+
+.cocard-option-box {
+  margin-top: 16px;
+  padding: 16px 18px;
+  background: #faf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  text-align: left;
+}
+.cocard-box-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.cocard-box-tag {
+  padding: 3px 8px;
+  background: var(--green);
+  color: var(--paper);
+  font: 900 11px "Barlow Condensed";
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cocard-box-header strong {
+  font: 800 14px "DM Sans";
+  color: var(--ink);
+}
+.cocard-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cocard-radio {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 12px !important;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1.5px solid #c8c6bd;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.cocard-radio:hover {
+  background: #f4f2e6;
+  border-color: var(--ink);
+}
+.cocard-radio--active {
+  background: var(--green-light) !important;
+  border: 2px solid var(--ink) !important;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.cocard-radio input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--green);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.cocard-radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cocard-radio-text strong {
+  font: 800 14px/1.2 "DM Sans";
+  color: var(--ink);
+}
+.cocard-radio-text small {
+  font-size: 12px;
+  color: var(--muted);
+}
 .qris-panel { min-height: 130px; padding: 18px; display: grid; grid-template-columns: 82px 1fr auto; gap: 18px; align-items: center; border: 2px solid var(--ink); background: #faf9f4; }
 .qris-mark { width: 82px; height: 82px; display: grid; place-content: center; color: var(--paper); background: var(--ink); font: 900 24px/.7 "Barlow Condensed"; text-align: center; }
 .qris-mark--img { background: #ffffff; border: 1.5px solid var(--ink); padding: 8px; }
