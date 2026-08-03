@@ -436,7 +436,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
         {selectedScope ? (
           <div className="custom-select-selected">
             <span className="select-badge">{selectedScope.code}</span>
-            <span className="select-text"><b>{selectedScope.name}</b><small> • {selectedScope.type}</small></span>
+            <span className="select-text"><b>{selectedScope.name}</b><small className="select-type-small"> • {selectedScope.type}</small></span>
           </div>
         ) : (
           <span className="select-placeholder">-- Pilih Lini PKKBN Fakultas --</span>
