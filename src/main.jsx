@@ -605,8 +605,6 @@ function App() {
   useEffect(() => {
     if (!submitted || !paymentData?.order_id || isPaid) return;
 
-    checkStatusNow();
-
     let eventSource = null;
     try {
       if (BACKEND_URL && typeof EventSource !== "undefined") {
@@ -614,7 +612,7 @@ function App() {
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("⚡ [SSE Realtime Event Received]:", data);
+            console.log("⚡ [SSE Realtime Push Received]:", data);
             if (data && data.paid) {
               setIsPaid(true);
               if (eventSource) eventSource.close();
@@ -624,15 +622,8 @@ function App() {
       }
     } catch (e) {}
 
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        checkStatusNow();
-      }
-    }, 6000);
-
     return () => {
       if (eventSource) eventSource.close();
-      clearInterval(interval);
     };
   }, [submitted, paymentData, isPaid]);
 
