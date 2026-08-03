@@ -351,10 +351,11 @@ footer > strong i { color: var(--green-light); font-style: normal; }
   .photo { border-width: 5px; }
   .photo--large { width: 86%; height: 62%; right: 1%; }
   .photo--small { width: 48%; height: 42%; left: 1%; }
-  .hero-poster { width: auto; max-width: 90%; min-height: auto; right: 0; padding: 10px 14px; border-width: 5px; }
-  .hero-poster b { font-size: clamp(24px, 5.5vw, 36px); margin-right: 6px; }
-  .hero-poster span { font-size: clamp(24px, 5.5vw, 36px); }
-  .hero-poster small { margin-top: 6px; font-size: 10px; line-height: 1.35; letter-spacing: .08em; }
+  .tape--two { bottom: auto; left: auto; top: 6%; right: 2%; transform: rotate(-35deg); }
+  .hero-poster { width: auto; max-width: 72%; min-height: auto; right: 2%; bottom: 4%; padding: 8px 12px; border-width: 4px; transform: rotate(-1.5deg); }
+  .hero-poster b { font-size: clamp(22px, 5.2vw, 34px); margin-right: 5px; }
+  .hero-poster span { font-size: clamp(22px, 5.2vw, 34px); }
+  .hero-poster small { margin-top: 5px; font-size: 9px; line-height: 1.3; letter-spacing: .07em; }
   .notice { min-height: 112px; padding: 18px 16px; gap: 10px; }
   .notice strong { font-size: 22px; }
   .notice span { font-size: 12px; line-height: 1.5; }
@@ -425,8 +426,9 @@ footer > strong i { color: var(--green-light); font-style: normal; }
   .brand small { display: none; }
   .hero h1 { font-size: 16.2vw; }
   .hero-collage { height: 350px; }
-  .hero-poster b { font-size: 22px; margin-right: 4px; }
-  .hero-poster span { font-size: 22px; }
+  .hero-poster { max-width: 65%; bottom: 3%; }
+  .hero-poster b { font-size: 20px; margin-right: 4px; }
+  .hero-poster span { font-size: 20px; }
   .summary-total { display: block; }
   .summary-total b { display: block; margin-top: 5px; }
 }
