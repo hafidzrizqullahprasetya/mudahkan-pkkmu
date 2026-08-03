@@ -277,6 +277,8 @@ footer > strong i { color: var(--green-light); font-style: normal; }
 .expired-icon { font-size: 32px; }
 .qris-expired-notice strong { font: 800 18px "Barlow Condensed"; }
 .qris-expired-notice small { font-size: 12px; color: var(--muted); }
+.qris-merchant-notice { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff8e6; border: 1.5px solid #e5c158; color: #6b5100; font-size: 12px; line-height: 1.4; text-align: left; }
+.qris-merchant-notice b { color: #403000; font-weight: 800; }
 .qris-amount-row { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--green-light); border: 1.5px solid var(--ink); margin-top: 4px; }
 .qris-amount-row span { font-weight: 700; font-size: 13px; text-transform: uppercase; }
 .qris-amount-row strong { font: 900 24px "Barlow Condensed"; color: var(--ink); }

@@ -800,7 +800,7 @@ function App() {
             <div className="qris-card-body">
               <div className="qris-header-row">
                 <img src={qrisLogo} alt="Logo QRIS" className="qris-brand-logo" />
-                <span className="qris-merchant-title">NMK: UPN ATRIBUT OSPEK • MIDTRANS</span>
+                <span className="qris-merchant-title">MIDTRANS • QRIS OFFICIAL</span>
               </div>
 
               <div className="qris-qr-wrapper">
@@ -819,6 +819,11 @@ function App() {
                 )}
               </div>
 
+              <div className="qris-merchant-notice">
+                <span>ℹ️</span>
+                <span>Saat di-scan, nama merchant resmi yang muncul adalah <b>Pempek Asli Wong Kito</b>.</span>
+              </div>
+
               <div className="qris-amount-row">
                 <span>Total Pembayaran</span>
                 <strong>{rupiah(paymentData?.gross_amount || total)}</strong>
@@ -826,6 +831,7 @@ function App() {
 
               <div className="qris-order-details">
                 <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id || `PKKMU-${Date.now()}`}</b></div>
+                <div className="order-detail-line"><span>Merchant:</span><b>Pempek Asli Wong Kito (Midtrans)</b></div>
                 <div className="order-detail-line"><span>Metode:</span><b>QRIS (GoPay, OVO, Dana, ShopeePay, BCA, dll)</b></div>
               </div>
             </div>
