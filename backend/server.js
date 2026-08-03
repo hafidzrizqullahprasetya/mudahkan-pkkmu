@@ -2,7 +2,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import qrcode from "qrcode-terminal";
+import qrcodeTerminal from "qrcode-terminal";
+import QRCode from "qrcode";
 import pkg from "whatsapp-web.js";
 
 import fs from "fs";
@@ -20,6 +21,8 @@ app.use(express.json({ limit: "50mb" }));
 
 // Store orders in memory to link orderId -> customer info
 const ordersStore = {};
+let latestQrImage = "";
+let isWaReady = false;
 
 // Clean all stale Chromium locks before initializing
 const sessionDir = path.resolve("./.wwebjs_auth/session");
@@ -52,18 +55,23 @@ const waClient = new Client({
   },
 });
 
-let isWaReady = false;
-
-waClient.on("qr", (qr) => {
+waClient.on("qr", async (qr) => {
   console.log("\n==========================================");
   console.log("SCAN QR CODE DENGAN WHATSAPP UNTUK LOGIN:");
   console.log("==========================================\n");
-  qrcode.generate(qr, { small: true });
+  qrcodeTerminal.generate(qr, { small: true });
+
+  try {
+    latestQrImage = await QRCode.toDataURL(qr);
+  } catch (err) {
+    console.error("Gagal membuat data URL QR:", err);
+  }
 });
 
 waClient.on("ready", () => {
   console.log("✅ WhatsApp Web Bot siap dan terhubung!");
   isWaReady = true;
+  latestQrImage = "";
 });
 
 waClient.on("authenticated", () => {
@@ -91,6 +99,85 @@ function formatWaNumber(phone) {
   }
   return cleaned + "@c.us";
 }
+
+// Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
+app.get("/qr", (req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  if (isWaReady) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>WhatsApp Bot - Connected</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f0e9; color: #151714; }
+          .card { background: #ffffff; padding: 40px; border-radius: 12px; border: 3px solid #174b36; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+          .icon { font-size: 48px; margin-bottom: 12px; }
+          h1 { color: #174b36; margin: 0 0 8px; font-size: 24px; }
+          p { color: #555; margin: 0; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">✅</div>
+          <h1>WhatsApp Bot Terhubung!</h1>
+          <p>Sesi login WhatsApp aktif & siap mengabari mahasiswa baru.</p>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  if (latestQrImage) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Scan WhatsApp QR Code</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="refresh" content="6">
+        <style>
+          body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #151714; color: #ffffff; }
+          .card { background: #ffffff; color: #151714; padding: 32px; border-radius: 16px; text-align: center; max-width: 360px; }
+          h2 { margin: 0 0 8px; color: #174b36; }
+          p { margin: 0 0 20px; font-size: 14px; color: #666; }
+          img { width: 260px; height: 260px; display: block; margin: 0 auto; border: 2px solid #151714; }
+          small { display: block; margin-top: 16px; color: #888; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h2>Scan WhatsApp QR</h2>
+          <p>Buka WhatsApp di HP ➔ Perangkat Tertaut ➔ Scan QR Code ini:</p>
+          <img src="${latestQrImage}" alt="QR Code WhatsApp" />
+          <small>Halaman otomatis reload tiap 6 detik...</small>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  return res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Memuat QR Code...</title>
+      <meta http-equiv="refresh" content="3">
+      <style>
+        body { font-family: sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #f2f0e9; }
+        .card { background: #fff; padding: 30px; border-radius: 12px; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h3>⏳ Memuat QR Code WhatsApp...</h3>
+        <p>Silakan tunggu 3 detik...</p>
+      </div>
+    </body>
+    </html>
+  `);
+});
 
 // Endpoint status server
 app.get("/api/health", (req, res) => {
