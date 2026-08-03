@@ -20,12 +20,18 @@ app.use(express.json({ limit: "50mb" }));
 // Store orders in memory to link orderId -> customer info
 const ordersStore = {};
 
-// Cleanup stale Chrome session lock if left over
-const lockPath = path.resolve("./.wwebjs_auth/session/SingletonLock");
-if (fs.existsSync(lockPath)) {
-  try {
-    fs.unlinkSync(lockPath);
-  } catch (e) {}
+// Clean all stale Chromium locks before initializing
+const sessionDir = path.resolve("./.wwebjs_auth/session");
+if (fs.existsSync(sessionDir)) {
+  const lockFiles = ["SingletonLock", "SingletonCookie", "SingletonSocket", "DevToolsActivePort"];
+  lockFiles.forEach((file) => {
+    const fullPath = path.join(sessionDir, file);
+    if (fs.existsSync(fullPath)) {
+      try {
+        fs.unlinkSync(fullPath);
+      } catch (e) {}
+    }
+  });
 }
 
 // Initialize WhatsApp Web Client with LocalAuth for session persistence
@@ -33,7 +39,15 @@ const waClient = new Client({
   authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
   puppeteer: {
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--disable-gpu"
+    ],
   },
 });
 
