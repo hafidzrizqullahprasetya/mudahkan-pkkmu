@@ -19,3 +19,7 @@ dist/
 Thumbs.db
 .vercel
 .env*
+.wwebjs_auth
+.wwebjs_cache
+backend/.wwebjs_auth
+backend/.wwebjs_cache
