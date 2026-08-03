@@ -1360,6 +1360,19 @@ function notifyPaymentSuccessSSE(orderId) {
 
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  const { orderId } = req.query;
+  if (!orderId) return res.json({ paid: false });
+
+  const order = ordersStore[orderId];
+  const isPaid = Boolean(order && order.status === "PAID");
+
+  if (isPaid) {
+    return res.json({ paid: true, status: "PAID", order });
+  }
+  return res.json({ paid: false, status: "PENDING" });
+});
+
 // Endpoint untuk menyimpan pesanan awal & notifikasi ke backend
 app.post("/api/send-order-notif", async (req, res) => {
   try {
