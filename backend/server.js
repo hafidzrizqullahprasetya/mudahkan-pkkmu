@@ -1095,62 +1095,38 @@ let chatsCache = { ts: 0, list: [] };
 const CHATS_CACHE_TTL = 15000;
 
 async function fetchChatsFromStore() {
-  if (!isWaReady || !waClient) return [];
+  if (!isWaReady || !waClient || !waClient.pupPage) return [];
 
-  // Strategi 1: Official whatsapp-web.js getChats()
   try {
-    const chats = await waClient.getChats();
-    if (Array.isArray(chats) && chats.length > 0) {
+    const list = await waClient.pupPage.evaluate(() => {
       const out = [];
-      for (const c of chats) {
-        if (!c || !c.id) continue;
-        const idStr = c.id._serialized || (typeof c.id === "string" ? c.id : (c.id.user ? c.id.user + "@c.us" : ""));
-        const name = c.name || c.formattedTitle || c.title || c.id.user || "Chat tanpa nama";
-        const isGroup = Boolean(c.isGroup || (idStr && idStr.endsWith("@g.us")));
-        out.push({
-          type: isGroup ? "group" : "wa",
-          name: String(name),
-          phone: c.id.user || idStr.replace(/@.*$/, ""),
-          id: idStr || name,
-        });
-      }
-      if (out.length > 0) {
-        console.log(`✅ [Strategi 1 OK] Mendapatkan ${out.length} chat dari waClient.getChats()!`);
-        return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      }
-    }
-  } catch (err) {
-    console.warn("⚠️ Strategi 1 getChats() warning:", err && (err.message || err));
-  }
-
-  // Strategi 2: DOM & window.Store Fallback (100% Reliable, NEVER EMPTY)
-  try {
-    if (!waClient.pupPage) return [];
-    const directChats = await waClient.pupPage.evaluate(() => {
-      const list = [];
       const seen = new Set();
 
-      // Check Store.Chat.models
+      // Method 1: window.Store.Chat.models (Standard WWebJS Internal Store)
       try {
-        if (window.Store && window.Store.Chat && window.Store.Chat.models) {
-          for (const m of window.Store.Chat.models) {
-            const idStr = m.id ? (m.id._serialized || String(m.id)) : "";
-            const name = m.name || m.formattedTitle || m.title || "";
+        if (window.Store && window.Store.Chat && (window.Store.Chat.models || window.Store.Chat._models)) {
+          const models = window.Store.Chat.models || window.Store.Chat._models || [];
+          for (const m of models) {
+            if (!m || !m.id) continue;
+            const jid = m.id._serialized || String(m.id);
+            if (!jid || !jid.includes("@")) continue;
+
+            const name = m.name || m.formattedTitle || m.title || jid.replace(/@.*$/, "");
             if (name && !seen.has(name)) {
               seen.add(name);
-              const isGroup = Boolean(m.isGroup || (idStr && idStr.endsWith("@g.us")));
-              list.push({
+              const isGroup = Boolean(m.isGroup || jid.endsWith("@g.us"));
+              out.push({
                 type: isGroup ? "group" : "wa",
                 name: String(name),
-                phone: idStr ? idStr.replace(/@.*$/, "") : name,
-                id: idStr || name,
+                phone: jid.replace(/@.*$/, ""),
+                id: jid,
               });
             }
           }
         }
       } catch (e) {}
 
-      // Extract real JID (@g.us / @c.us) from React Fiber on #pane-side chat rows
+      // Method 2: Extract real JID (@g.us / @c.us) from React Fiber elements on #pane-side
       try {
         const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"]'));
         for (const row of rows) {
@@ -1184,29 +1160,52 @@ async function fetchChatsFromStore() {
             }
           }
 
-          if (name && !seen.has(name)) {
+          if (name && jid && jid.includes("@") && !seen.has(name)) {
             seen.add(name);
-            const isGroup = Boolean((jid && jid.endsWith("@g.us")) || name.toLowerCase().includes("grup") || name.toLowerCase().includes("group") || name.toLowerCase().includes("founder") || name.toLowerCase().includes("pkk"));
-            list.push({
+            const isGroup = Boolean(jid.endsWith("@g.us"));
+            out.push({
               type: isGroup ? "group" : "wa",
               name: name,
-              phone: jid ? jid.replace(/@.*$/, "") : name,
-              id: jid || name,
+              phone: jid.replace(/@.*$/, ""),
+              id: jid,
             });
           }
         }
       } catch (e) {}
 
-      return list;
+      return out;
     });
 
-    if (Array.isArray(directChats) && directChats.length > 0) {
-      console.log(`✅ [Strategi 2 OK] Mendapatkan ${directChats.length} chat dari DOM WhatsApp Web!`);
-      return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    if (Array.isArray(list) && list.length > 0) {
+      console.log(`✅ [fetchChatsFromStore OK] Found ${list.length} chats with valid @g.us / @c.us JIDs!`);
+      return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     }
   } catch (err) {
-    console.warn("⚠️ Strategi 2 DOM error:", err && (err.message || err));
+    console.warn("⚠️ Error fetchChatsFromStore:", err && (err.message || err));
   }
+
+  // Official waClient.getChats() fallback
+  try {
+    const chats = await waClient.getChats();
+    if (Array.isArray(chats) && chats.length > 0) {
+      const out = [];
+      for (const c of chats) {
+        if (!c || !c.id) continue;
+        const jid = c.id._serialized || (c.id.user ? c.id.user + "@c.us" : "");
+        if (!jid || !jid.includes("@")) continue;
+
+        const name = c.name || c.formattedTitle || c.title || jid.replace(/@.*$/, "");
+        const isGroup = Boolean(c.isGroup || jid.endsWith("@g.us"));
+        out.push({
+          type: isGroup ? "group" : "wa",
+          name: String(name),
+          phone: jid.replace(/@.*$/, ""),
+          id: jid,
+        });
+      }
+      return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
+  } catch (err) {}
 
   return [];
 }
@@ -1218,12 +1217,9 @@ app.get("/api/chats", async (req, res) => {
   if (!isWaReady) {
     return res.status(503).json({ error: "WhatsApp bot belum siap." });
   }
-  if (Date.now() - chatsCache.ts < CHATS_CACHE_TTL && chatsCache.list.length) {
-    return res.json({ chats: chatsCache.list, total: chatsCache.list.length, cached: true });
-  }
   try {
     const list = await fetchChatsFromStore();
-    chatsCache = { ts: Date.now(), list };
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({ chats: list, total: list.length });
   } catch (err) {
     console.error("Gagal mengambil daftar chat:", err);
