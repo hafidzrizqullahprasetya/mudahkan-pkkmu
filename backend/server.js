@@ -295,6 +295,6 @@ _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Node.js Backend & WA Bot berjalan di port: ${PORT}`);
 });
