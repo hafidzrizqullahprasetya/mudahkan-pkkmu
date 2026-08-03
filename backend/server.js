@@ -77,17 +77,21 @@ function buildCoordOrderText(orderData, paid) {
 ${statusLine}`;
 }
 
-// Clean all stale Chromium locks before initializing
+// Clean all stale Chromium locks before initializing.
+// NOTE: SingletonLock/Cookie/Socket are SYMLINKS to a (now-dead) container hostname.
+// fs.existsSync follows symlinks and returns false for dangling ones, so use lstatSync
+// to detect and remove them reliably.
 const sessionDir = path.resolve("./.wwebjs_auth/session");
 if (fs.existsSync(sessionDir)) {
   const lockFiles = ["SingletonLock", "SingletonCookie", "SingletonSocket", "DevToolsActivePort"];
   lockFiles.forEach((file) => {
     const fullPath = path.join(sessionDir, file);
-    if (fs.existsSync(fullPath)) {
-      try {
+    try {
+      if (fs.lstatSync(fullPath)) {
         fs.unlinkSync(fullPath);
-      } catch (e) {}
-    }
+        console.log(`🧹 Lock dibersihkan: ${file}`);
+      }
+    } catch (e) {}
   });
 }
 
