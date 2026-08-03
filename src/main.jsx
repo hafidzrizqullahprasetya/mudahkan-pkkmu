@@ -80,6 +80,54 @@ const products = [
   },
 ];
 
+// Komponen dasar yang terkandung dalam tiap produk, untuk mencegah pesanan duplikat/bentrok.
+const productItems = {
+  lanyard: ["lanyard"],
+  cocard: ["cocard"],
+  booklet: ["booklet"],
+  "paket-lc": ["lanyard", "cocard"],
+  "paket-lb": ["lanyard", "booklet"],
+  "paket-cb": ["cocard", "booklet"],
+  "paket-lengkap": ["lanyard", "cocard", "booklet"],
+};
+
+const BEST_SELLER_IDS = ["paket-lengkap", "paket-lc"];
+
+// Normalisasi pilihan: ubah eceran yang setara paket menjadi paket hemat secara otomatis.
+// Prioritas paling besar dulu (paket-lengkap), lalu pasangan.
+const BUNDLE_RECIPES = [
+  { bundle: "paket-lengkap", singles: ["lanyard", "cocard", "booklet"] },
+  { bundle: "paket-lc", singles: ["lanyard", "cocard"] },
+  { bundle: "paket-lb", singles: ["lanyard", "booklet"] },
+  { bundle: "paket-cb", singles: ["cocard", "booklet"] },
+];
+
+const normalizeSelection = (ids) => {
+  const singletonIds = ["lanyard", "cocard", "booklet"];
+  const keep = ids.filter((id) => !singletonIds.includes(id));
+  const pool = new Set(ids.filter((id) => singletonIds.includes(id)));
+
+  BUNDLE_RECIPES.forEach(({ bundle, singles }) => {
+    if (singles.every((single) => pool.has(single))) {
+      keep.push(bundle);
+      singles.forEach((single) => pool.delete(single));
+    }
+  });
+
+  pool.forEach((single) => keep.push(single));
+  return keep;
+};
+
+const sortedProducts = (list) =>
+  [...list].sort((a, b) => {
+    const rankA = BEST_SELLER_IDS.indexOf(a.id);
+    const rankB = BEST_SELLER_IDS.indexOf(b.id);
+    if (rankA === -1 && rankB === -1) return 0;
+    if (rankA === -1) return 1;
+    if (rankB === -1) return -1;
+    return rankA - rankB;
+  });
+
 const pkkbnScopes = [
   {
     id: "feb",
@@ -89,6 +137,7 @@ const pkkbnScopes = [
     image: imgFeb,
     instagramUrl: instagramUrl,
     description: "Atribut khusus kegiatan pengenalan kampus Fakultas Ekonomi dan Bisnis.",
+    prodis: ["Manajemen", "Akuntansi", "Ekonomi Pembangunan"],
   },
   {
     id: "fisip",
@@ -98,6 +147,12 @@ const pkkbnScopes = [
     image: imgFisip,
     instagramUrl: instagramUrl,
     description: "Kelengkapan atribut identitas mahasiswa baru FISIP UPN Veteran Yogyakarta.",
+    prodis: [
+      "Ilmu Komunikasi",
+      "Ilmu Administrasi Bisnis",
+      "Hubungan Internasional",
+      "Hubungan Masyarakat",
+    ],
   },
   {
     id: "fti",
@@ -107,6 +162,7 @@ const pkkbnScopes = [
     image: imgFti,
     instagramUrl: instagramUrl,
     description: "Paket atribut ospek FTI Garuda untuk calon keteknikan dan industri.",
+    prodis: ["Teknik Industri", "S1 Teknik Kimia", "Informatika", "Sistem Informasi", "D3 Teknik Kimia"],
   },
   {
     id: "ftme",
@@ -116,6 +172,15 @@ const pkkbnScopes = [
     image: imgFtme,
     instagramUrl: instagramUrl,
     description: "Kelengkapan atribut ospek Fakultas Teknologi Mineral dan Energi.",
+    prodis: [
+      "Teknik Geologi",
+      "Teknik Pertambangan",
+      "Teknik Perminyakan",
+      "Teknik Lingkungan",
+      "Teknik Geofisika",
+      "Teknik Geomatika",
+      "Teknik Metalurgi",
+    ],
   },
   {
     id: "fp",
@@ -125,32 +190,8 @@ const pkkbnScopes = [
     image: imgFp,
     instagramUrl: instagramUrl,
     description: "Atribut kegiatan PKKBN untuk mahasiswa baru Fakultas Pertanian.",
+    prodis: ["Agroteknologi", "Agribisnis", "Ilmu Tanah"],
   },
-];
-
-const prodiList = [
-  "Teknik Geologi",
-  "Teknik Pertambangan",
-  "Teknik Perminyakan",
-  "Teknik Lingkungan",
-  "Teknik Geofisika",
-  "Teknik Metalurgi",
-  "Teknik Geomatika",
-  "Teknik Industri",
-  "S1 Teknik Kimia",
-  "Informatika",
-  "Sistem Informasi",
-  "D3 Teknik Kimia",
-  "Agroteknologi",
-  "Agribisnis",
-  "Ilmu Tanah",
-  "Manajemen",
-  "Akuntansi",
-  "Ekonomi Pembangunan",
-  "Ilmu Komunikasi",
-  "Ilmu Administrasi Bisnis",
-  "Hubungan Internasional",
-  "Hubungan Masyarakat",
 ];
 
 const whatsappGroupUrl = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
@@ -222,10 +263,11 @@ function ProductArt({ type }) {
   );
 }
 
-function CustomProdiSelect({ options, value, onChange, error }) {
+function CustomProdiSelect({ options, value, onChange, error, hasFaculty }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
   const searchInputRef = useRef(null);
 
   useEffect(() => {
@@ -245,8 +287,19 @@ function CustomProdiSelect({ options, value, onChange, error }) {
   useEffect(() => {
     if (isOpen) {
       setSearchTerm("");
+      const pad = 24;
       setTimeout(() => {
         searchInputRef.current?.focus();
+        menuRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        requestAnimationFrame(() => {
+          const rect = menuRef.current?.getBoundingClientRect();
+          if (rect) {
+            const overflow = rect.bottom - (window.innerHeight - pad);
+            if (overflow > 0) {
+              window.scrollBy({ top: overflow, behavior: "smooth" });
+            }
+          }
+        });
       }, 50);
     }
   }, [isOpen]);
@@ -267,6 +320,7 @@ function CustomProdiSelect({ options, value, onChange, error }) {
       <input type="hidden" name="prodi" value={value} />
       <button
         type="button"
+        disabled={!hasFaculty}
         className={`custom-select-trigger ${isOpen ? "custom-select-trigger--open" : ""} ${error ? "custom-select-trigger--error" : ""}`}
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
@@ -276,13 +330,13 @@ function CustomProdiSelect({ options, value, onChange, error }) {
             <span className="select-text"><b>{value}</b></span>
           </div>
         ) : (
-          <span className="select-placeholder">-- Pilih Program Studi --</span>
+          <span className="select-placeholder">{hasFaculty ? "-- Pilih Program Studi --" : "-- Pilih Fakultas terlebih dahulu --"}</span>
         )}
         <span className="select-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
 
       {isOpen && (
-        <div className="custom-select-menu" role="listbox">
+        <div className="custom-select-menu" role="listbox" ref={menuRef}>
           <div className="custom-select-search-box">
             <input
               ref={searchInputRef}
@@ -320,7 +374,7 @@ function CustomProdiSelect({ options, value, onChange, error }) {
               })
             ) : (
               <div className="custom-select-empty">
-                Tidak ada program studi yang cocok dengan "{searchTerm}"
+                {hasFaculty ? `Tidak ada program studi yang cocok dengan "${searchTerm}"` : "Pilih PKKBN Fakultas terlebih dahulu untuk melihat program studi."}
               </div>
             )}
           </div>
@@ -400,6 +454,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const selectedScope = scopes.find((s) => s.name === value);
@@ -421,8 +476,19 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
   useEffect(() => {
     if (isOpen) {
       setSearchTerm("");
+      const pad = 24;
       setTimeout(() => {
         searchInputRef.current?.focus();
+        menuRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        requestAnimationFrame(() => {
+          const rect = menuRef.current?.getBoundingClientRect();
+          if (rect) {
+            const overflow = rect.bottom - (window.innerHeight - pad);
+            if (overflow > 0) {
+              window.scrollBy({ top: overflow, behavior: "smooth" });
+            }
+          }
+        });
       }, 50);
     }
   }, [isOpen]);
@@ -463,7 +529,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
       </button>
 
       {isOpen && (
-        <div className="custom-select-menu" role="listbox">
+        <div className="custom-select-menu" role="listbox" ref={menuRef}>
           <div className="custom-select-search-box">
             <input
               ref={searchInputRef}
@@ -645,6 +711,21 @@ function App() {
   const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
   const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
 
+  const selectedScope = pkkbnScopes.find((s) => s.name === selectedFaculty) || null;
+  const availableProdis = selectedScope?.prodis || [];
+  const hasCocardProduct = selectedProducts.some((id) =>
+    ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
+  );
+
+  const handleFacultyChange = (val) => {
+    setSelectedFaculty(val);
+    setErrors((curr) => ({ ...curr, faculty: undefined }));
+    const newScope = pkkbnScopes.find((s) => s.name === val);
+    if (newScope && !newScope.prodis.includes(selectedProdi)) {
+      setSelectedProdi("");
+    }
+  };
+
   useEffect(() => {
     if (!BACKEND_URL) return;
     fetch(`${BACKEND_URL}/api/settings`)
@@ -672,9 +753,20 @@ function App() {
   };
 
   const toggleProduct = (id) => {
-    setSelectedProducts((current) => current.includes(id)
-      ? current.filter((productId) => productId !== id)
-      : [...current, id]);
+    const isAdding = !selectedProducts.includes(id);
+    setSelectedProducts((current) => {
+      let next;
+      if (!isAdding) {
+        next = current.filter((productId) => productId !== id);
+      } else {
+        const incomingItems = productItems[id];
+        next = [...current.filter((productId) => {
+          const existingItems = productItems[productId] || [];
+          return existingItems.length === 0 || !incomingItems.some((item) => existingItems.includes(item));
+        }), id];
+      }
+      return normalizeSelection(next);
+    });
     setErrors((current) => ({ ...current, products: undefined }));
   };
 
@@ -710,12 +802,19 @@ function App() {
     const data = new FormData(event.currentTarget);
     const nextErrors = {};
 
-    ["name", "nim", "prodi", "faculty", "whatsapp"].forEach((field) => {
+    const hasCocard = selectedProducts.some((id) =>
+      ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
+    );
+
+    ["name", "nim", "faculty", "whatsapp"].forEach((field) => {
       if (!data.get(field)?.trim()) nextErrors[field] = "Bagian ini wajib diisi.";
     });
+    if (selectedFaculty && !data.get("prodi")?.trim()) {
+      nextErrors.prodi = "Bagian ini wajib diisi.";
+    }
     const photoFile = data.get("photo");
-    if (!photoFile || !photoFile.name || photoFile.size === 0) {
-      nextErrors.photo = "Pas foto 3x4 wajib diunggah.";
+    if (hasCocard && (!photoFile || !photoFile.name || photoFile.size === 0)) {
+      nextErrors.photo = "Pas foto 3x4 wajib diunggah untuk Cocard.";
     }
     if (selectedProducts.length === 0) nextErrors.products = "Pilih minimal satu produk.";
     if (!data.get("agreement")) nextErrors.agreement = "Centang persetujuan sebelum mengirim pesanan.";
@@ -729,9 +828,6 @@ function App() {
         if (photoFile && photoFile.size > 0) {
           photoBase64 = await fileToBase64(photoFile);
         }
-        const hasCocard = selectedProducts.some((id) =>
-          ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
-        );
         const cocardVariantNote = hasCocard
           ? cocardOption === "both"
             ? "(Cocard: Pusat + Fakultas)"
@@ -889,7 +985,7 @@ function App() {
           <div><h2>Pilih atributmu.</h2><p>Klik produk untuk langsung menuju ke formulir pemesanan.</p></div>
         </div>
         <div className="package-grid">
-          {products.map((product) => {
+          {sortedProducts(products).map((product) => {
             return (
               <button
                 type="button"
@@ -975,10 +1071,10 @@ function App() {
             <div className="form-grid">
               <label><span>Nama lengkap <span className="required-asterisk">*</span></span><input name="name" type="text" autoComplete="name" placeholder="Tulis nama lengkap" value={formData.name} onChange={(e) => { setFormData((prev) => ({ ...prev, name: e.target.value })); setErrors((curr) => ({ ...curr, name: undefined })); }} aria-invalid={Boolean(errors.name)} />{errors.name && <small className="error">{errors.name}</small>}</label>
               <label><span>NIM <span className="required-asterisk">*</span></span><input name="nim" type="text" inputMode="numeric" autoComplete="off" placeholder="Contoh: 111260004" value={formData.nim} onChange={(e) => { setFormData((prev) => ({ ...prev, nim: e.target.value })); setErrors((curr) => ({ ...curr, nim: undefined })); }} aria-invalid={Boolean(errors.nim)} />{errors.nim && <small className="error">{errors.nim}</small>}</label>
-              <label><span>Pilihan PKKBN Fakultas <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={(val) => { setSelectedFaculty(val); setErrors((curr) => ({ ...curr, faculty: undefined })); }} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
-              <label><span>Program Studi <span className="required-asterisk">*</span></span><CustomProdiSelect options={prodiList} value={selectedProdi} onChange={(val) => { setSelectedProdi(val); setErrors((curr) => ({ ...curr, prodi: undefined })); }} error={Boolean(errors.prodi)} />{errors.prodi && <small className="error">{errors.prodi}</small>}</label>
+              <label><span>Pilihan PKKBN Fakultas <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={handleFacultyChange} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
+              <label><span>Program Studi <span className="required-asterisk">*</span></span><CustomProdiSelect options={availableProdis} value={selectedProdi} onChange={(val) => { setSelectedProdi(val); setErrors((curr) => ({ ...curr, prodi: undefined })); }} error={Boolean(errors.prodi)} hasFaculty={Boolean(selectedFaculty)} />{errors.prodi && <small className="error">{errors.prodi}</small>}</label>
               <label className="full-width"><span>Nomor WhatsApp <span className="required-asterisk">*</span></span><input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="Contoh: 081234567890" value={formData.whatsapp} onChange={(e) => { setFormData((prev) => ({ ...prev, whatsapp: e.target.value })); setErrors((curr) => ({ ...curr, whatsapp: undefined })); }} aria-invalid={Boolean(errors.whatsapp)} />{errors.whatsapp && <small className="error">{errors.whatsapp}</small>}</label>
-              <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) <span className="required-asterisk">*</span></span><PhotoUploadInput error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
+              <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) {hasCocardProduct && <span className="required-asterisk">*</span>}</span><PhotoUploadInput required={hasCocardProduct} error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
             </div>
           </fieldset>
 
@@ -1011,7 +1107,7 @@ function App() {
             </div>
 
             <div className="product-check-grid">
-              {products
+              {sortedProducts(products)
                 .filter((p) => {
                   if (productTab === "bundle") return p.id.startsWith("paket-");
                   if (productTab === "single") return !p.id.startsWith("paket-");
@@ -1040,57 +1136,58 @@ function App() {
                 })}
             </div>
 
-            {selectedProducts.some((id) => ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)) && (
-              <div className="cocard-option-box">
-                <div className="cocard-box-header">
-                  <span className="cocard-box-tag">Varian Cetak Cocard</span>
-                  <strong>Pilihan versi cetak kokard (Harga tetap sama):</strong>
-                </div>
-                <div className="cocard-radio-group">
-                  <label className={`cocard-radio ${cocardOption === "both" ? "cocard-radio--active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="cocardOption"
-                      value="both"
-                      checked={cocardOption === "both"}
-                      onChange={() => setCocardOption("both")}
-                    />
-                    <div className="cocard-radio-text">
-                      <strong>Dua-duanya (PKKBN Pusat + Fakultas)</strong>
-                      <small>Dapatkan 2 kokard fisik sekaligus (Versi Pusat & Versi Fakultas) tanpa biaya tambahan!</small>
-                    </div>
-                  </label>
-
-                  <label className={`cocard-radio ${cocardOption === "pusat" ? "cocard-radio--active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="cocardOption"
-                      value="pusat"
-                      checked={cocardOption === "pusat"}
-                      onChange={() => setCocardOption("pusat")}
-                    />
-                    <div className="cocard-radio-text">
-                      <strong>PKKBN Pusat Saja</strong>
-                      <small>Cetak 1 kokard versi PKKBN Pusat UPNVYK</small>
-                    </div>
-                  </label>
-
-                  <label className={`cocard-radio ${cocardOption === "fakultas" ? "cocard-radio--active" : ""}`}>
-                    <input
-                      type="radio"
-                      name="cocardOption"
-                      value="fakultas"
-                      checked={cocardOption === "fakultas"}
-                      onChange={() => setCocardOption("fakultas")}
-                    />
-                    <div className="cocard-radio-text">
-                      <strong>PKKBN Fakultas Saja</strong>
-                      <small>Cetak 1 kokard versi Fakultas yang kamu pilih</small>
-                    </div>
-                  </label>
-                </div>
+            <div
+              className={`cocard-option-box ${hasCocardProduct ? "cocard-option-box--show" : ""}`}
+              aria-hidden={!hasCocardProduct}
+            >
+              <div className="cocard-box-header">
+                <span className="cocard-box-tag">Varian Cetak Cocard</span>
+                <strong>Pilihan versi cetak kokard (Harga tetap sama):</strong>
               </div>
-            )}
+              <div className="cocard-radio-group">
+                <label className={`cocard-radio ${cocardOption === "both" ? "cocard-radio--active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="cocardOption"
+                    value="both"
+                    checked={cocardOption === "both"}
+                    onChange={() => setCocardOption("both")}
+                  />
+                  <div className="cocard-radio-text">
+                    <strong>Dua-duanya (PKKBN Pusat + Fakultas)</strong>
+                    <small>Dapatkan 2 kokard fisik sekaligus (Versi Pusat & Versi Fakultas) tanpa biaya tambahan!</small>
+                  </div>
+                </label>
+
+                <label className={`cocard-radio ${cocardOption === "pusat" ? "cocard-radio--active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="cocardOption"
+                    value="pusat"
+                    checked={cocardOption === "pusat"}
+                    onChange={() => setCocardOption("pusat")}
+                  />
+                  <div className="cocard-radio-text">
+                    <strong>PKKBN Pusat Saja</strong>
+                    <small>Cetak 1 kokard versi PKKBN Pusat UPNVYK</small>
+                  </div>
+                </label>
+
+                <label className={`cocard-radio ${cocardOption === "fakultas" ? "cocard-radio--active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="cocardOption"
+                    value="fakultas"
+                    checked={cocardOption === "fakultas"}
+                    onChange={() => setCocardOption("fakultas")}
+                  />
+                  <div className="cocard-radio-text">
+                    <strong>PKKBN Fakultas Saja</strong>
+                    <small>Cetak 1 kokard versi Fakultas yang kamu pilih</small>
+                  </div>
+                </label>
+              </div>
+            </div>
 
             {errors.products && <small className="error product-error">{errors.products}</small>}
           </fieldset>

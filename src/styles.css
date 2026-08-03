@@ -302,12 +302,29 @@ main { overflow-x: clip; }
 .product-error { display: block; margin-top: 10px; }
 
 .cocard-option-box {
-  margin-top: 16px;
-  padding: 16px 18px;
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding: 0 18px;
   background: #faf9f4;
-  border: 2px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
+  border: 2px solid transparent;
+  border-width: 0 2px 0 2px;
+  box-shadow: none;
   text-align: left;
+  visibility: hidden;
+  transition: max-height .4s ease, opacity .35s ease, margin-top .4s ease, padding .4s ease, border-width .3s ease, box-shadow .3s ease, visibility 0s linear .4s;
+}
+.cocard-option-box--show {
+  margin-top: 16px;
+  max-height: 380px;
+  opacity: 1;
+  padding: 16px 18px;
+  border-width: 2px 2px 2px 2px;
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  visibility: visible;
+  transition: max-height .4s ease, opacity .35s ease, margin-top .4s ease, padding .4s ease, border-width .3s ease, box-shadow .3s ease, visibility 0s linear 0s;
 }
 .cocard-box-header {
   display: flex;
