@@ -484,6 +484,7 @@ function App() {
   const [errors, setErrors] = useState({});
   const [activeIgTarget, setActiveIgTarget] = useState(null);
   const [payMode, setPayMode] = useState("production");
+  const [productTab, setProductTab] = useState("all");
 
   const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
   const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
@@ -773,25 +774,61 @@ function App() {
 
           <fieldset>
             <legend><span>2</span> Produk yang dibeli</legend>
-            <p className="fieldset-help">Pilih satu atau beberapa produk.</p>
+            <p className="fieldset-help">Filter kategori atau pilih langsung paket favoritmu.</p>
+            
+            <div className="product-tab-filter">
+              <button
+                type="button"
+                className={`tab-btn ${productTab === "all" ? "tab-btn--active" : ""}`}
+                onClick={() => setProductTab("all")}
+              >
+                🔥 Semua ({products.length})
+              </button>
+              <button
+                type="button"
+                className={`tab-btn tab-btn--highlight ${productTab === "bundle" ? "tab-btn--active" : ""}`}
+                onClick={() => setProductTab("bundle")}
+              >
+                ✨ Paket Hemat ({products.filter((p) => p.id.startsWith("paket-")).length})
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${productTab === "single" ? "tab-btn--active" : ""}`}
+                onClick={() => setProductTab("single")}
+              >
+                🪪 Eceran ({products.filter((p) => !p.id.startsWith("paket-")).length})
+              </button>
+            </div>
+
             <div className="product-check-grid">
-              {products.map((product) => {
-                const selected = selectedProducts.includes(product.id);
-                return (
-                  <label className={`product-check ${selected ? "product-check--active" : ""}`} key={product.id}>
-                    <input type="checkbox" name="products" value={product.id} checked={selected} onChange={() => toggleProduct(product.id)} />
-                    <div className="product-check-content">
-                      <div className="product-check-meta">{product.note}</div>
-                      <div className="product-check-title">{product.name}</div>
-                      <div className="product-check-desc">{product.description}</div>
-                    </div>
-                    <div className="product-check-right">
-                      <div className="product-check-price">{rupiah(product.price)}</div>
-                      <div className="product-check-badge">{selected ? "Terpilih ✓" : "Pilih +"}</div>
-                    </div>
-                  </label>
-                );
-              })}
+              {products
+                .filter((p) => {
+                  if (productTab === "bundle") return p.id.startsWith("paket-");
+                  if (productTab === "single") return !p.id.startsWith("paket-");
+                  return true;
+                })
+                .map((product) => {
+                  const selected = selectedProducts.includes(product.id);
+                  const isBestSeller = product.id === "paket-lengkap" || product.id === "paket-lc";
+                  return (
+                    <label
+                      className={`product-check ${selected ? "product-check--active" : ""} ${isBestSeller ? "product-check--highlight" : ""}`}
+                      key={product.id}
+                    >
+                      {isBestSeller && <div className="product-best-badge">🔥 PALING LARIS</div>}
+                      <input type="checkbox" name="products" value={product.id} checked={selected} onChange={() => toggleProduct(product.id)} />
+                      <div className="product-check-content">
+                        <div className="product-check-meta">{product.note}</div>
+                        <div className="product-check-title">{product.name}</div>
+                        <div className="product-check-desc">{product.description}</div>
+                      </div>
+                      <div className="product-check-right">
+                        <div className="product-check-price">{rupiah(product.price)}</div>
+                        <div className="product-check-badge">{selected ? "Terpilih ✓" : "Pilih +"}</div>
+                      </div>
+                    </label>
+                  );
+                })}
             </div>
             {errors.products && <small className="error product-error">{errors.products}</small>}
           </fieldset>
