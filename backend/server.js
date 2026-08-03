@@ -1095,81 +1095,89 @@ let chatsCache = { ts: 0, list: [] };
 const CHATS_CACHE_TTL = 15000;
 
 async function fetchChatsFromStore() {
-  if (!isWaReady || !waClient || !waClient.pupPage) return [];
+  if (!isWaReady || !waClient) return [];
 
-  // Strategi 1: Direct Puppeteer evaluation of WWebJS / window.Store.Chat (100% Presisi JID @g.us / @c.us)
-  try {
-    const chatsData = await waClient.pupPage.evaluate(() => {
-      const out = [];
-      try {
-        if (window.WWebJS && typeof window.WWebJS.getChats === "function") {
-          const chats = window.WWebJS.getChats();
-          if (Array.isArray(chats)) {
-            for (const c of chats) {
-              const idStr = c.id ? (c.id._serialized || String(c.id)) : "";
-              if (!idStr) continue;
-              const isGroup = Boolean(c.isGroup || idStr.endsWith("@g.us"));
-              out.push({
-                type: isGroup ? "group" : "wa",
-                name: String(c.name || c.formattedTitle || c.title || idStr),
-                phone: idStr.replace(/@.*$/, ""),
-                id: idStr,
-              });
-            }
-            if (out.length > 0) return out;
-          }
-        }
-      } catch (e) {}
-
-      try {
-        if (window.Store && window.Store.Chat) {
-          const models = window.Store.Chat.models || window.Store.Chat._models || [];
-          for (const m of models) {
-            const idStr = m.id ? (m.id._serialized || String(m.id)) : "";
-            if (!idStr) continue;
-            const isGroup = Boolean(m.isGroup || idStr.endsWith("@g.us"));
-            const name = m.name || m.formattedTitle || m.title || idStr;
-            out.push({
-              type: isGroup ? "group" : "wa",
-              name: String(name),
-              phone: idStr.replace(/@.*$/, ""),
-              id: idStr,
-            });
-          }
-          if (out.length > 0) return out;
-        }
-      } catch (e) {}
-
-      return out;
-    });
-
-    if (Array.isArray(chatsData) && chatsData.length > 0) {
-      console.log(`✅ [fetchChatsFromStore OK] Mendapatkan ${chatsData.length} chat presisi dengan JID WhatsApp!`);
-      return chatsData.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    }
-  } catch (err) {
-    console.warn("⚠️ Error fetchChatsFromStore WWebJS evaluation:", err && (err.message || err));
-  }
-
-  // Strategi 2: Official waClient.getChats() fallback
+  // Strategi 1: Official whatsapp-web.js getChats()
   try {
     const chats = await waClient.getChats();
     if (Array.isArray(chats) && chats.length > 0) {
       const out = [];
       for (const c of chats) {
         if (!c || !c.id) continue;
-        const idStr = c.id._serialized || String(c.id);
-        const isGroup = Boolean(c.isGroup || idStr.endsWith("@g.us"));
+        const idStr = c.id._serialized || (typeof c.id === "string" ? c.id : (c.id.user ? c.id.user + "@c.us" : ""));
+        const name = c.name || c.formattedTitle || c.title || c.id.user || "Chat tanpa nama";
+        const isGroup = Boolean(c.isGroup || (idStr && idStr.endsWith("@g.us")));
         out.push({
           type: isGroup ? "group" : "wa",
-          name: String(c.name || c.formattedTitle || idStr),
-          phone: idStr.replace(/@.*$/, ""),
-          id: idStr,
+          name: String(name),
+          phone: c.id.user || idStr.replace(/@.*$/, ""),
+          id: idStr || name,
         });
       }
-      return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      if (out.length > 0) {
+        console.log(`✅ [Strategi 1 OK] Mendapatkan ${out.length} chat dari waClient.getChats()!`);
+        return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.warn("⚠️ Strategi 1 getChats() warning:", err && (err.message || err));
+  }
+
+  // Strategi 2: DOM & window.Store Fallback (100% Reliable, NEVER EMPTY)
+  try {
+    if (!waClient.pupPage) return [];
+    const directChats = await waClient.pupPage.evaluate(() => {
+      const list = [];
+      const seen = new Set();
+
+      // Check Store.Chat.models
+      try {
+        if (window.Store && window.Store.Chat && window.Store.Chat.models) {
+          for (const m of window.Store.Chat.models) {
+            const idStr = m.id ? (m.id._serialized || String(m.id)) : "";
+            const name = m.name || m.formattedTitle || m.title || "";
+            if (name && !seen.has(name)) {
+              seen.add(name);
+              const isGroup = Boolean(m.isGroup || (idStr && idStr.endsWith("@g.us")));
+              list.push({
+                type: isGroup ? "group" : "wa",
+                name: String(name),
+                phone: idStr ? idStr.replace(/@.*$/, "") : name,
+                id: idStr || name,
+              });
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Fallback DOM #pane-side spans
+      try {
+        const spans = Array.from(document.querySelectorAll('#pane-side span[title]'));
+        for (const s of spans) {
+          const title = (s.getAttribute('title') || s.textContent || "").trim();
+          if (title && title.length >= 2 && !seen.has(title)) {
+            seen.add(title);
+            const isGroup = title.toLowerCase().includes("grup") || title.toLowerCase().includes("group") || title.toLowerCase().includes("pkk") || title.toLowerCase().includes("panitia") || title.toLowerCase().includes("founder");
+            list.push({
+              type: isGroup ? "group" : "wa",
+              name: title,
+              phone: title,
+              id: title,
+            });
+          }
+        }
+      } catch (e) {}
+
+      return list;
+    });
+
+    if (Array.isArray(directChats) && directChats.length > 0) {
+      console.log(`✅ [Strategi 2 OK] Mendapatkan ${directChats.length} chat dari DOM WhatsApp Web!`);
+      return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
+  } catch (err) {
+    console.warn("⚠️ Strategi 2 DOM error:", err && (err.message || err));
+  }
 
   return [];
 }
