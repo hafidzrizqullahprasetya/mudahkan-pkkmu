@@ -294,6 +294,7 @@ function qrPageShell(title, contentHtml) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#174b36" />
+  ${!isWaReady ? '<meta http-equiv="refresh" content="4" />' : ""}
   <title>${title} | Mudahkan PKKMU!</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
