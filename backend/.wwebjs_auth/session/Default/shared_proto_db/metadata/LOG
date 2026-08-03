@@ -1,3 +1,2 @@
-2026/08/03-12:50:52.887 17f195 Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/shared_proto_db/metadata/MANIFEST-000001
-2026/08/03-12:50:52.888 17f195 Recovering log #3
-2026/08/03-12:50:52.889 17f195 Reusing old log /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/shared_proto_db/metadata/000003.log 
+2026/08/03-12:52:45.437 180029 Creating DB /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/shared_proto_db/metadata since it was missing.
+2026/08/03-12:52:45.442 180029 Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/shared_proto_db/metadata/MANIFEST-000001

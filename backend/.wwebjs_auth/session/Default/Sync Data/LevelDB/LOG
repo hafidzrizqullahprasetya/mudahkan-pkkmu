@@ -1,3 +1,2 @@
-2026/08/03-12:50:51.977 17f1a6 Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001
-2026/08/03-12:50:51.979 17f1a6 Recovering log #3
-2026/08/03-12:50:51.980 17f1a6 Reusing old log /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/000003.log 
+2026/08/03-12:52:45.303 180018 Creating DB /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB since it was missing.
+2026/08/03-12:52:45.316 180018 Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Sync Data/LevelDB/MANIFEST-000001

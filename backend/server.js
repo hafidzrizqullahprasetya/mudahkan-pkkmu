@@ -11,7 +11,7 @@ const { Client, LocalAuth } = pkg;
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5760;
 const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
 
 app.use(cors());
@@ -81,6 +81,7 @@ function formatWaNumber(phone) {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
+    app: "mudahkan-pkkmu-backend",
     whatsapp_ready: isWaReady,
     timestamp: new Date().toISOString(),
   });
@@ -140,11 +141,17 @@ _Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
 app.post("/api/midtrans-webhook", async (req, res) => {
   try {
     const notification = req.body;
-    console.log("🔔 Midtrans Webhook Event Received:", notification.order_id, notification.transaction_status);
-
     const orderId = notification.order_id;
     const transactionStatus = notification.transaction_status;
     const fraudStatus = notification.fraud_status;
+
+    console.log("🔔 Midtrans Webhook Event Received:", orderId, transactionStatus);
+
+    // AMAN 100%: Filter hanya transaksi dengan prefix 'PKKMU-' agar transaksi warung Pempek Asli Wong Kito diabaikan
+    if (!orderId || !orderId.startsWith("PKKMU-")) {
+      console.log(`ℹ️ Abaikan transaksi non-PKKMU (Pempek Store): ${orderId}`);
+      return res.status(200).json({ status: "IGNORED", message: "Not a PKKMU transaction" });
+    }
 
     if (
       (transactionStatus === "settlement" || transactionStatus === "capture") &&

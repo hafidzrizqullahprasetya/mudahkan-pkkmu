@@ -1,3 +1,2 @@
-2026/08/03-12:50:53.545 17f1fb Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
-2026/08/03-12:50:53.552 17f1fb Recovering log #3
-2026/08/03-12:50:53.555 17f1fb Reusing old log /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Session Storage/000003.log 
+2026/08/03-12:52:45.870 180087 Creating DB /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Session Storage since it was missing.
+2026/08/03-12:52:45.884 180087 Reusing MANIFEST /Users/fizualstd/Documents/GitHub/mudahkan-pkkmu/backend/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
