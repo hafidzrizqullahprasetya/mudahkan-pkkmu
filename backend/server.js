@@ -1360,21 +1360,7 @@ function notifyPaymentSuccessSSE(orderId) {
 
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-  const { orderId } = req.query;
-  if (!orderId) return res.json({ paid: false });
-
-  const order = ordersStore[orderId];
-  const isPaid = Boolean(order && order.status === "PAID");
-  console.log(`🔍 [check-order-status API] Order: ${orderId} -> Paid: ${isPaid}`);
-
-  if (isPaid) {
-    return res.json({ paid: true, status: "PAID", order });
-  }
-  return res.json({ paid: false, status: "PENDING" });
-});
-
-// Endpoint untuk menyimpan pesanan awal & notifikasi ke grup koordinasi admin 2Founders
+// Endpoint untuk menyimpan pesanan awal & notifikasi ke backend
 app.post("/api/send-order-notif", async (req, res) => {
   try {
     const { name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType } = req.body;
@@ -1388,24 +1374,8 @@ app.post("/api/send-order-notif", async (req, res) => {
       ordersStore[orderId] = orderData;
     }
 
-    // Backup kirim data ke Google Sheets & Google Drive
-    sendToGoogleSheets({ name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType });
-
-    // Kirim notifikasi pesanan baru masuk ke grup 2Founders / Admin
-    if (isWaReady && settings.coordWa) {
-      try {
-        const coordTarget = await resolveCoordTarget();
-        if (coordTarget) {
-          const coordText = buildCoordOrderText(orderData);
-          await waClient.sendMessage(coordTarget, coordText);
-          console.log(`🤝 Pesan koordinasi pesanan baru terkirim ke: ${settings.coordWa} (${coordTarget})`);
-        } else {
-          console.error(`⚠️ Target koordinasi tidak ditemukan: ${settings.coordWa}`);
-        }
-      } catch (coordErr) {
-        console.error("Gagal kirim pesan koordinasi:", coordErr);
-      }
-    }
+    // Simpan data ke Google Sheets & Google Drive
+    sendToGoogleSheets({ name, nim, prodi, faculty, whatsapp, products, total, orderId, photoBase64, photoName, photoType, status: "PENDING" });
 
     return res.json({ status: "success", message: "Pesanan berhasil disimpan di backend." });
   } catch (err) {
@@ -1424,7 +1394,6 @@ app.post("/api/midtrans-webhook", async (req, res) => {
 
     console.log("🔔 Midtrans Webhook Event Received:", orderId, transactionStatus);
 
-    // AMAN 100%: Filter hanya transaksi dengan prefix 'PKKMU-' agar transaksi warung Pempek Asli Wong Kito diabaikan
     if (!orderId || !orderId.startsWith("PKKMU-")) {
       console.log(`ℹ️ Abaikan transaksi non-PKKMU (Pempek Store): ${orderId}`);
       return res.status(200).json({ status: "IGNORED", message: "Not a PKKMU transaction" });
@@ -1440,18 +1409,24 @@ app.post("/api/midtrans-webhook", async (req, res) => {
       } else {
         ordersStore[orderId].status = "PAID";
       }
+
       notifyPaymentSuccessSSE(orderId);
       const orderData = ordersStore[orderId];
 
-      if (orderData && isWaReady) {
-        const formattedNumber = formatWaNumber(orderData.whatsapp);
+      // Update status lunas di Google Sheets
+      sendToGoogleSheets({ ...orderData, orderId, status: "LUNAS (PAID)" });
+
+      if (isWaReady) {
+        const formattedNumber = orderData.whatsapp ? formatWaNumber(orderData.whatsapp) : "";
         const productListText = Array.isArray(orderData.products)
           ? orderData.products.join(", ")
           : orderData.products;
 
-        const successMsg = `🎉 *PEMBAYARAN QRIS BERHASIL (LUNAS)*
+        // 1. PESAN TUNGGAL RESMI UNTUK PEMBELI
+        if (formattedNumber) {
+          const successMsg = `🎉 *PEMBAYARAN QRIS BERHASIL (LUNAS)*
 
-Halo kak *${orderData.name}*, terima kasih! Pembayaran untuk pesanan atribut ospek kamu telah *KAMI TERIMA*!
+Halo kak *${orderData.name || "Peserta"}*, terima kasih! Pembayaran untuk pesanan atribut ospek UPN Veteran Yogyakarta 2026 kamu telah *KAMI TERIMA*!
 
 📋 *Detail Transaksi Lunas:*
 • Order ID: *${orderId}*
@@ -1464,17 +1439,32 @@ ${WA_GROUP_LINK}
 
 _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
 
-        await waClient.sendMessage(formattedNumber, successMsg);
-        console.log(`📩 Notifikasi PEMBAYARAN LUNAS terkirim via WA ke: ${formattedNumber}`);
+          await waClient.sendMessage(formattedNumber, successMsg);
+          console.log(`📩 Notifikasi PEMBAYARAN LUNAS terkirim via WA ke pembeli: ${formattedNumber}`);
+        }
 
-        // Edit pesan koordinasi sebelumnya menjadi SUDAH BAYAR
-        if (orderData.coordMessage && orderData.coordMessage.edit) {
+        // 2. PESAN KOORDINASI HANYA KETIKA PEMBAYARAN LUNAS KE GRUP 2FOUNDERS / ADMIN
+        if (settings.coordWa) {
           try {
-            const coordPaidText = buildCoordOrderText(orderData, true);
-            await orderData.coordMessage.edit(coordPaidText);
-            console.log(`✏️ Pesan koordinasi di-edit menjadi SUDAH BAYAR untuk: ${orderId}`);
-          } catch (editErr) {
-            console.error("Gagal edit pesan koordinasi:", editErr);
+            const coordTarget = await resolveCoordTarget();
+            if (coordTarget) {
+              const paidCoordText = `📦 *PESANAN BARU MASUK (LUNAS)*
+────────────────
+🆔 Order ID: *${orderId}*
+👤 Nama: *${orderData.name || "-"}*
+🎓 NIM: *${orderData.nim || "-"}*
+🏫 Lini PKKBN: *${orderData.faculty || "-"}*
+📚 Program Studi: *${orderData.prodi || "-"}*
+📞 WA Pembeli: *${orderData.whatsapp || "-"}*
+🛍️ Produk: *${productListText || "-"}*
+💰 Total: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}*
+✅ Status: *LUNAS (VERIFIED QRIS)*`;
+
+              await waClient.sendMessage(coordTarget, paidCoordText);
+              console.log(`🤝 Pesan koordinasi pesanan LUNAS terkirim ke grup: ${settings.coordWa} (${coordTarget})`);
+            }
+          } catch (coordErr) {
+            console.error("Gagal kirim pesan koordinasi lunas:", coordErr);
           }
         }
       }
