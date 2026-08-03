@@ -420,7 +420,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
   );
 }
 
-const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzw8Dj11JHnSGzLOQm7rB3uoJ85LVtYxh9S5GKeAvnweiPHh0lKl6Fo1V3C8KtGzOgfEw/exec";
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwYhGuKRLB5dWD4gTR6W3dG4SEwBX-YfgVuomj_3D6Iqy9_2Nf7DiBR98D8N20QOiVl-A/exec";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const fileToBase64 = (file) => {
