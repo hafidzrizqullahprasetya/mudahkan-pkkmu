@@ -488,9 +488,50 @@ const fileToBase64 = (file) => {
 };
 
 function App() {
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [selectedProdi, setSelectedProdi] = useState("");
-  const [selectedFaculty, setSelectedFaculty] = useState("");
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pkkbn_order_draft");
+      return saved ? JSON.parse(saved) : { name: "", nim: "", whatsapp: "" };
+    } catch (e) {
+      return { name: "", nim: "", whatsapp: "" };
+    }
+  });
+
+  const [selectedProducts, setSelectedProducts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pkkbn_order_draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.selectedProducts)) return parsed.selectedProducts;
+      }
+    } catch (e) {}
+    return [];
+  });
+
+  const [selectedProdi, setSelectedProdi] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pkkbn_order_draft");
+      if (saved) return JSON.parse(saved).prodi || "";
+    } catch (e) {}
+    return "";
+  });
+
+  const [selectedFaculty, setSelectedFaculty] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pkkbn_order_draft");
+      if (saved) return JSON.parse(saved).faculty || "";
+    } catch (e) {}
+    return "";
+  });
+
+  const [cocardOption, setCocardOption] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pkkbn_order_draft");
+      if (saved) return JSON.parse(saved).cocardOption || "both";
+    } catch (e) {}
+    return "both";
+  });
+
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
@@ -500,7 +541,21 @@ function App() {
   const [activeIgTarget, setActiveIgTarget] = useState(null);
   const [payMode, setPayMode] = useState("production");
   const [productTab, setProductTab] = useState("all");
-  const [cocardOption, setCocardOption] = useState("both");
+
+  useEffect(() => {
+    try {
+      const draft = {
+        name: formData.name || "",
+        nim: formData.nim || "",
+        whatsapp: formData.whatsapp || "",
+        faculty: selectedFaculty,
+        prodi: selectedProdi,
+        selectedProducts,
+        cocardOption,
+      };
+      localStorage.setItem("pkkbn_order_draft", JSON.stringify(draft));
+    } catch (e) {}
+  }, [formData, selectedFaculty, selectedProdi, selectedProducts, cocardOption]);
 
   const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
   const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
@@ -646,6 +701,9 @@ function App() {
         setIsSubmitting(false);
         setTimeLeft(600); // Reset to 10 minutes
         setSubmitted(true);
+        try {
+          localStorage.removeItem("pkkbn_order_draft");
+        } catch (e) {}
       }
     } else {
       setTimeout(() => {
@@ -797,11 +855,11 @@ function App() {
           <fieldset>
             <legend><span>1</span> Data pembeli & PKKBN</legend>
             <div className="form-grid">
-              <label><span>Nama lengkap <span className="required-asterisk">*</span></span><input name="name" type="text" autoComplete="name" placeholder="Tulis nama lengkap" aria-invalid={Boolean(errors.name)} />{errors.name && <small className="error">{errors.name}</small>}</label>
-              <label><span>NIM <span className="required-asterisk">*</span></span><input name="nim" type="text" inputMode="numeric" autoComplete="off" placeholder="Contoh: 111260004" aria-invalid={Boolean(errors.nim)} />{errors.nim && <small className="error">{errors.nim}</small>}</label>
+              <label><span>Nama lengkap <span className="required-asterisk">*</span></span><input name="name" type="text" autoComplete="name" placeholder="Tulis nama lengkap" value={formData.name} onChange={(e) => { setFormData((prev) => ({ ...prev, name: e.target.value })); setErrors((curr) => ({ ...curr, name: undefined })); }} aria-invalid={Boolean(errors.name)} />{errors.name && <small className="error">{errors.name}</small>}</label>
+              <label><span>NIM <span className="required-asterisk">*</span></span><input name="nim" type="text" inputMode="numeric" autoComplete="off" placeholder="Contoh: 111260004" value={formData.nim} onChange={(e) => { setFormData((prev) => ({ ...prev, nim: e.target.value })); setErrors((curr) => ({ ...curr, nim: undefined })); }} aria-invalid={Boolean(errors.nim)} />{errors.nim && <small className="error">{errors.nim}</small>}</label>
               <label><span>Pilihan PKKBN Fakultas <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={(val) => { setSelectedFaculty(val); setErrors((curr) => ({ ...curr, faculty: undefined })); }} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
               <label><span>Program Studi <span className="required-asterisk">*</span></span><CustomProdiSelect options={prodiList} value={selectedProdi} onChange={(val) => { setSelectedProdi(val); setErrors((curr) => ({ ...curr, prodi: undefined })); }} error={Boolean(errors.prodi)} />{errors.prodi && <small className="error">{errors.prodi}</small>}</label>
-              <label className="full-width"><span>Nomor WhatsApp <span className="required-asterisk">*</span></span><input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="Contoh: 081234567890" aria-invalid={Boolean(errors.whatsapp)} />{errors.whatsapp && <small className="error">{errors.whatsapp}</small>}</label>
+              <label className="full-width"><span>Nomor WhatsApp <span className="required-asterisk">*</span></span><input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="Contoh: 081234567890" value={formData.whatsapp} onChange={(e) => { setFormData((prev) => ({ ...prev, whatsapp: e.target.value })); setErrors((curr) => ({ ...curr, whatsapp: undefined })); }} aria-invalid={Boolean(errors.whatsapp)} />{errors.whatsapp && <small className="error">{errors.whatsapp}</small>}</label>
               <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) <span className="required-asterisk">*</span></span><PhotoUploadInput error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
             </div>
           </fieldset>
