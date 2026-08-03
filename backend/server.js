@@ -405,6 +405,47 @@ app.post("/api/settings", (req, res) => {
 });
 
 // Daftar chat yang ada di bot WhatsApp (untuk memilih tujuan koordinasi) — wajib PIN
+let chatsCache = { ts: 0, list: [] };
+const CHATS_CACHE_TTL = 15000;
+
+async function fetchChatsFromStore() {
+  const raw = await waClient.pupPage.evaluate(() => {
+    const out = [];
+    const ChatStore = window.Store && window.Store.Chat;
+    const models = ChatStore && ChatStore.models ? ChatStore.models : [];
+    for (const c of models) {
+      try {
+        const id = c && c.id && c.id._serialized;
+        if (!id) continue;
+        if (id.endsWith("@g.us")) {
+          let inviteCode = "";
+          try { inviteCode = c.inviteCode || ""; } catch (e) {}
+          out.push({
+            type: "group",
+            name: c.name || c.id.user || "Grup tanpa nama",
+            id,
+            inviteCode,
+          });
+        } else if (id.endsWith("@c.us")) {
+          let name = c.name || "";
+          try {
+            const contact = c.contact;
+            if (contact) name = contact.name || contact.pushname || contact.formattedName || name;
+          } catch (e) {}
+          out.push({
+            type: "wa",
+            name: name || c.id.user || "Nomor tanpa nama",
+            phone: c.id.user || "",
+            id,
+          });
+        }
+      } catch (e) { /* skip chat bermasalah */ }
+    }
+    return out;
+  });
+  return (raw || []).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+}
+
 app.get("/api/chats", async (req, res) => {
   const { pin } = req.query;
   if (!settings.pin || pin !== settings.pin) {
@@ -413,30 +454,12 @@ app.get("/api/chats", async (req, res) => {
   if (!isWaReady) {
     return res.status(503).json({ error: "WhatsApp bot belum siap." });
   }
+  if (Date.now() - chatsCache.ts < CHATS_CACHE_TTL && chatsCache.list.length) {
+    return res.json({ chats: chatsCache.list, total: chatsCache.list.length, cached: true });
+  }
   try {
-    const chats = await waClient.getChats();
-    const list = [];
-    for (const chat of chats) {
-      const serialized = chat.id._serialized || "";
-      if (serialized.endsWith("@status@broadcast")) continue;
-      if (serialized.endsWith("@newsletter")) continue;
-      if (serialized.endsWith("@g.us")) {
-        list.push({
-          type: "group",
-          name: chat.name || chat.id.user || "Grup tanpa nama",
-          id: serialized,
-          inviteCode: chat.inviteCode || "",
-        });
-      } else if (serialized.endsWith("@c.us")) {
-        list.push({
-          type: "wa",
-          name: chat.name || chat.id.user || "Nomor tanpa nama",
-          phone: chat.id.user || "",
-          id: serialized,
-        });
-      }
-    }
-    list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    const list = await fetchChatsFromStore();
+    chatsCache = { ts: Date.now(), list };
     res.json({ chats: list, total: list.length });
   } catch (err) {
     console.error("Gagal mengambil daftar chat:", err);
