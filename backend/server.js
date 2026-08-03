@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 import qrcode from "qrcode-terminal";
 import pkg from "whatsapp-web.js";
 
+import fs from "fs";
+import path from "path";
+
 const { Client, LocalAuth } = pkg;
 dotenv.config();
 
@@ -12,6 +15,14 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+
+// Cleanup stale Chrome session lock if left over
+const lockPath = path.resolve("./.wwebjs_auth/session/SingletonLock");
+if (fs.existsSync(lockPath)) {
+  try {
+    fs.unlinkSync(lockPath);
+  } catch (e) {}
+}
 
 // Initialize WhatsApp Web Client with LocalAuth for session persistence
 const waClient = new Client({
