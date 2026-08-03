@@ -51,7 +51,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PORT=5760
 
 WORKDIR /app
-
+# Force rebuild native modules (better-sqlite3)
 COPY package*.json ./
 RUN npm install --production && npm rebuild better-sqlite3 --build-from-source
 
