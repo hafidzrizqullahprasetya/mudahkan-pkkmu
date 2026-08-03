@@ -434,23 +434,33 @@
   </footer>
 
   <script>
+    const AUTH_KEY = "pkkmu_session_token";
+
     let currentPin = null;
+    let authToken = null;
 
     const $ = (id) => document.getElementById(id);
     const loginCard = $("loginCard");
     const settingsCard = $("settingsCard");
     const msg = $("msg");
 
+    // Sertakan token/PIN otomatis ke semua request API ke backend
+    async function api(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (authToken) headers["x-auth-token"] = authToken;
+      if (currentPin && !options.isAuthless) {
+        const sep = url.includes("?") ? "&" : "?";
+        url += sep + "pin=" + encodeURIComponent(currentPin);
+      }
+      const res = await fetch(url, { ...options, headers });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, data };
+    }
+
     function showMsg(text, ok) {
       msg.textContent = text;
       msg.className = "msg " + (ok ? "ok" : "err");
       setTimeout(() => { msg.className = "msg"; }, 4000);
-    }
-
-    async function api(url, options) {
-      const res = await fetch(url, options);
-      const data = await res.json().catch(() => ({}));
-      return { ok: res.ok, data };
     }
 
     async function loadWaStatus() {
@@ -562,7 +572,7 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
     }
 
     async function openChatPicker() {
-      const { ok, data } = await api("/api/chats?pin=" + encodeURIComponent(currentPin));
+      const { ok, data } = await api("/api/chats", { isAuthless: true });
       const el = $("chatList");
       if (!ok) {
         el.innerHTML = '<div class="chat-list-empty">' + esc(data.error || "Gagal memuat chat.") + '</div>';
@@ -594,16 +604,7 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
       showMsg("Tujuan koordinasi dipilih ✓", true);
     });
 
-    // Login
-    $("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const pin = $("pinInput").value.trim();
-      const { ok, data } = await api("/api/settings?pin=" + encodeURIComponent(pin));
-      if (!ok || data.locked) {
-        showMsg("PIN salah. Coba lagi.", false);
-        return;
-      }
-      currentPin = pin;
+    async function applyAuthAndUnlock(data) {
       loginCard.style.display = "none";
       settingsCard.style.display = "block";
       setModeUI(data.mode || "production");
@@ -611,7 +612,45 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
       $("coordWa").value = data.coordWa || "";
       refreshPreview();
       loadWaStatus();
+    }
+
+    // Login
+    $("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pin = $("pinInput").value.trim();
+      // 1) buat session token (agar refresh tidak reset login)
+      const auth = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const authData = await auth.json().catch(() => ({}));
+      if (!auth.ok || !authData.token) {
+        showMsg("PIN salah. Coba lagi.", false);
+        return;
+      }
+      authToken = authData.token;
+      sessionStorage.setItem(AUTH_KEY, authToken);
+      // 2) isi data pemilik
+      const { data } = await api("/api/settings", { isAuthless: true });
+      applyAuthAndUnlock(data);
+      currentPin = pin;
     });
+
+    // Auto-restore: validasi token tersimpan saat halaman dibuka/refresh
+    (async () => {
+      const saved = sessionStorage.getItem(AUTH_KEY);
+      if (!saved) return;
+      authToken = saved;
+      const { data } = await api("/api/settings", { isAuthless: true });
+      if (!data || data.locked) {
+        authToken = null;
+        sessionStorage.removeItem(AUTH_KEY);
+        return;
+      }
+      if (data.coordType) currentCoordType = data.coordType;
+      applyAuthAndUnlock(data);
+    })();
 
     // Simpan
     $("saveBtn").addEventListener("click", async () => {
@@ -622,7 +661,7 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
       const { ok, data } = await api("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: currentPin, mode, coordWa, coordType, newPin: newPin || undefined }),
+        body: JSON.stringify({ mode, coordWa, coordType, newPin: newPin || undefined }),
       });
       if (!ok) {
         showMsg(data.error || "Gagal menyimpan.", false);

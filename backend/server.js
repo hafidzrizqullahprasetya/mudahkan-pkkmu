@@ -24,8 +24,11 @@ const ordersStore = {};
 let latestQrImage = "";
 let isWaReady = false;
 
-// ===== Pengaturan (settings.json) =====
-const SETTINGS_FILE = path.resolve("./settings.json");
+// ===== Pengaturan (SQLite local DB) =====
+import Database from "better-sqlite3";
+
+const SETTINGS_DB = path.resolve("./.wwebjs_auth/settings.db");
+const LEGACY_SETTINGS = path.resolve("./settings.json");
 const DEFAULT_PIN = process.env.SETTINGS_PIN || "pkkmu2026";
 
 let settings = {
@@ -35,22 +38,62 @@ let settings = {
   pin: DEFAULT_PIN,
 };
 
+let db = null;
+try {
+  db = new Database(SETTINGS_DB);
+} catch (e) {
+  console.error("⚠️ Gagal membuka SQLite, fallback ke settings.json:", e.message);
+  db = null;
+}
+
 function loadSettings() {
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
-      settings = { ...settings, ...saved };
+    if (!db) {
+      if (fs.existsSync(LEGACY_SETTINGS)) {
+        settings = { ...settings, ...JSON.parse(fs.readFileSync(LEGACY_SETTINGS, "utf8")) };
+      }
+      return;
+    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        mode TEXT NOT NULL DEFAULT 'production',
+        coordWa TEXT NOT NULL DEFAULT '',
+        coordType TEXT NOT NULL DEFAULT 'wa',
+        pin TEXT NOT NULL
+      );
+    `);
+    const row = db.prepare("SELECT mode, coordWa, coordType, pin FROM settings WHERE id = 1").get();
+    if (row) {
+      settings = {
+        mode: row.mode || "production",
+        coordWa: row.coordWa || "",
+        coordType: row.coordType || "wa",
+        pin: row.pin || DEFAULT_PIN,
+      };
     }
   } catch (e) {
-    console.error("Gagal membaca settings.json:", e);
+    console.error("Gagal membaca SQLite settings:", e);
   }
 }
 
 function saveSettings() {
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    if (!db) {
+      fs.writeFileSync(LEGACY_SETTINGS, JSON.stringify(settings, null, 2));
+      return;
+    }
+    db.prepare(`
+      INSERT INTO settings (id, mode, coordWa, coordType, pin)
+      VALUES (1, @mode, @coordWa, @coordType, @pin)
+      ON CONFLICT(id) DO UPDATE SET
+        mode = excluded.mode,
+        coordWa = excluded.coordWa,
+        coordType = excluded.coordType,
+        pin = excluded.pin
+    `).run(settings);
   } catch (e) {
-    console.error("Gagal menyimpan settings.json:", e);
+    console.error("Gagal menyimpan SQLite settings:", e);
   }
 }
 
@@ -932,10 +975,41 @@ app.get("/", (req, res) => {
 </html>`);
 });
 
-// Ambil pengaturan (tanpa PIN aman? tanpa PIN hanya kembalikan mode)
+// ===== Session token agar login tidak reset setelah refresh/deploy =====
+import crypto from "crypto";
+const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 jam
+const sessions = new Map(); // token -> expiry ts
+
+function newToken() {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+function checkAuth(req) {
+  const pin = (req.query && req.query.pin) || (req.body && req.body.pin);
+  if (settings.pin && pin === settings.pin) return true;
+  const token = (req.query && req.query.token) || (req.headers && req.headers["x-auth-token"]);
+  if (token) {
+    const exp = sessions.get(token);
+    if (exp && exp > Date.now()) return true;
+    sessions.delete(token);
+  }
+  return false;
+}
+
+// Buat session token (untuk persist login)
+app.post("/api/auth", (req, res) => {
+  const { pin } = req.body || {};
+  if (!settings.pin || pin !== settings.pin) {
+    return res.status(401).json({ error: "PIN salah." });
+  }
+  const token = newToken();
+  sessions.set(token, Date.now() + SESSION_TTL);
+  res.json({ status: "success", token });
+});
+
+// Ambil pengaturan (tanpa auth hanya kembalikan mode)
 app.get("/api/settings", (req, res) => {
-  const { pin } = req.query;
-  const isAuth = settings.pin && pin === settings.pin;
+  const isAuth = checkAuth(req);
   res.json({
     mode: settings.mode,
     coordWa: isAuth ? settings.coordWa : "",
@@ -945,11 +1019,11 @@ app.get("/api/settings", (req, res) => {
   });
 });
 
-// Simpan pengaturan (wajib PIN)
+// Simpan pengaturan (wajib auth)
 app.post("/api/settings", (req, res) => {
-  const { pin, mode, coordWa, coordType, newPin } = req.body || {};
+  const { mode, coordWa, coordType, newPin } = req.body || {};
 
-  if (!settings.pin || pin !== settings.pin) {
+  if (!checkAuth(req)) {
     return res.status(401).json({ error: "PIN salah." });
   }
 
