@@ -179,7 +179,8 @@ main { overflow-x: clip; }
 .order-form label, .quantity-field { display: flex; flex-direction: column; gap: 10px; color: #30332e; font-size: 14px; line-height: 1.4; font-weight: 700; }
 .order-form input[type="text"], .order-form input[type="tel"], .order-form input[type="file"], .order-form select, .order-form textarea { width: 100%; min-height: 54px; padding: 0 15px; color: var(--ink); background: #faf9f4; border: 1.5px solid #73776f; border-radius: 0; outline: none; font-size: 15px; }
 
-.custom-select-wrapper { position: relative; width: 100%; }
+.custom-select-wrapper { position: relative; width: 100%; z-index: 1; }
+.custom-select-wrapper--open { z-index: 99 !important; }
 .custom-select-trigger { width: 100%; min-height: 54px; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink); background: #faf9f4; border: 1.5px solid #73776f; border-radius: 0; cursor: pointer; text-align: left; transition: border-color .2s, box-shadow .2s; }
 .custom-select-trigger:focus, .custom-select-trigger--open { border: 2px solid var(--green); box-shadow: 4px 4px 0 rgba(23,75,54,.18); outline: none; }
 .custom-select-trigger--error { border-color: #a32e24; }
@@ -189,7 +190,7 @@ main { overflow-x: clip; }
 .select-text small { color: var(--muted); font-size: 12px; }
 .select-placeholder { color: #757971; font-size: 14px; }
 .select-arrow { font-size: 11px; color: var(--muted); flex: 0 0 auto; }
-.custom-select-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; background: #faf9f4; border: 2px solid var(--ink); box-shadow: 6px 6px 0 rgba(21,23,20,.15); overflow: hidden; }
+.custom-select-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 999 !important; background: #faf9f4; border: 2.5px solid var(--ink); box-shadow: 8px 8px 0 rgba(21,23,20,.25); overflow: hidden; }
 .custom-select-search-box { padding: 8px 10px; background: #eae8df; border-bottom: 1.5px solid var(--ink); position: sticky; top: 0; z-index: 5; }
 .custom-select-search-input { width: 100%; min-height: 38px !important; padding: 0 10px !important; font-size: 13.5px !important; background: #faf9f4 !important; border: 1px solid #73776f !important; border-radius: 0 !important; }
 .custom-select-search-input:focus { border-color: var(--green) !important; box-shadow: none !important; outline: none !important; }

@@ -217,7 +217,11 @@ function CustomProdiSelect({ options, value, onChange, error }) {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -235,8 +239,13 @@ function CustomProdiSelect({ options, value, onChange, error }) {
     return item.toLowerCase().includes(term);
   });
 
+  const handleSelectOption = (item) => {
+    onChange(item);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="custom-select-wrapper" ref={dropdownRef}>
+    <div className={`custom-select-wrapper ${isOpen ? "custom-select-wrapper--open" : ""}`} ref={dropdownRef}>
       <input type="hidden" name="prodi" value={value} />
       <button
         type="button"
@@ -278,9 +287,10 @@ function CustomProdiSelect({ options, value, onChange, error }) {
                     role="option"
                     aria-selected={isSelected}
                     className={`custom-select-option ${isSelected ? "custom-select-option--selected" : ""}`}
-                    onClick={() => {
-                      onChange(item);
-                      setIsOpen(false);
+                    onClick={() => handleSelectOption(item)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleSelectOption(item);
                     }}
                   >
                     <div className="option-info">
@@ -383,7 +393,11 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -405,8 +419,13 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
     );
   });
 
+  const handleSelectScope = (scopeName) => {
+    onChange(scopeName);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="custom-select-wrapper" ref={dropdownRef}>
+    <div className={`custom-select-wrapper ${isOpen ? "custom-select-wrapper--open" : ""}`} ref={dropdownRef}>
       <input type="hidden" name="faculty" value={value} />
       <button
         type="button"
@@ -420,7 +439,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
             <span className="select-text"><b>{selectedScope.name}</b><small> • {selectedScope.type}</small></span>
           </div>
         ) : (
-          <span className="select-placeholder">-- Pilih Lini PKKBN / Fakultas --</span>
+          <span className="select-placeholder">-- Pilih Lini PKKBN Fakultas --</span>
         )}
         <span className="select-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
@@ -449,9 +468,10 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
                     role="option"
                     aria-selected={isSelected}
                     className={`custom-select-option ${isSelected ? "custom-select-option--selected" : ""}`}
-                    onClick={() => {
-                      onChange(scope.name);
-                      setIsOpen(false);
+                    onClick={() => handleSelectScope(scope.name)}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      handleSelectScope(scope.name);
                     }}
                   >
                     <span className="option-badge">{scope.code}</span>
