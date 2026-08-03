@@ -572,7 +572,7 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
     }
 
     async function openChatPicker() {
-      const { ok, data } = await api("/api/chats", { isAuthless: true });
+      const { ok, data } = await api("/api/chats");
       const el = $("chatList");
       if (!ok) {
         el.innerHTML = '<div class="chat-list-empty">' + esc(data.error || "Gagal memuat chat.") + '</div>';

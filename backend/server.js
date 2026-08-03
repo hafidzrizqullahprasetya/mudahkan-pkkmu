@@ -1079,52 +1079,30 @@ let chatsCache = { ts: 0, list: [] };
 const CHATS_CACHE_TTL = 15000;
 
 async function fetchChatsFromStore() {
-  const raw = await waClient.pupPage.evaluate(() => {
+  try {
+    const chats = await waClient.getChats();
     const out = [];
-    let models = [];
-    try {
-      models = window.require("WAWebCollections").Chat.getModelsArray() || [];
-    } catch (e) {
-      return { __error: e.toString() };
+    for (const c of chats) {
+      if (!c || !c.id || !c.id._serialized) continue;
+      const isGroup = c.isGroup || c.id._serialized.endsWith("@g.us");
+      out.push({
+        type: isGroup ? "group" : "wa",
+        name: c.name || c.formattedTitle || c.id.user || (isGroup ? "Grup tanpa nama" : "Kontak tanpa nama"),
+        phone: c.id.user || "",
+        id: c.id._serialized,
+        inviteCode: c.inviteCode || "",
+      });
     }
-    for (const c of models) {
-      try {
-        const id = c && c.id && c.id._serialized;
-        if (!id) continue;
-        if (id.endsWith("@g.us")) {
-          let inviteCode = "";
-          try { inviteCode = c.inviteCode || ""; } catch (e) {}
-          out.push({
-            type: "group",
-            name: c.name || c.formattedTitle || c.id.user || "Grup tanpa nama",
-            id,
-            inviteCode,
-          });
-        } else if (id.endsWith("@c.us")) {
-          let name = "";
-          try {
-            const contact = c.contact;
-            if (contact) name = contact.name || contact.pushname || contact.formattedName || contact.formattedTitle || name;
-          } catch (e) {}
-          out.push({
-            type: "wa",
-            name: name || c.formattedTitle || c.id.user || "Nomor tanpa nama",
-            phone: c.id.user || "",
-            id,
-          });
-        }
-      } catch (e) { /* skip chat bermasalah */ }
-    }
-    return out;
-  });
-  if (raw && raw.__error) throw new Error(raw.__error);
-  return (raw || []).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  } catch (err) {
+    console.error("Gagal getChats() dari WhatsApp Client:", err);
+    return [];
+  }
 }
 
 app.get("/api/chats", async (req, res) => {
-  const { pin } = req.query;
-  if (!settings.pin || pin !== settings.pin) {
-    return res.status(401).json({ error: "PIN salah." });
+  if (!checkAuth(req)) {
+    return res.status(401).json({ error: "Silakan login dengan PIN terlebih dahulu." });
   }
   if (!isWaReady) {
     return res.status(503).json({ error: "WhatsApp bot belum siap." });
