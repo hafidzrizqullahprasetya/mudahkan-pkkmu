@@ -32,9 +32,7 @@ const ordersStore = {};
 let latestQrImage = "";
 let isWaReady = false;
 
-// ===== Pengaturan (SQLite local DB) =====
-import Database from "better-sqlite3";
-
+// ===== Pengaturan (SQLite local DB / JSON fallback) =====
 const SETTINGS_DB = path.resolve("./.wwebjs_auth/settings.db");
 const LEGACY_SETTINGS = path.resolve("./settings.json");
 const DEFAULT_PIN = process.env.SETTINGS_PIN || "pkkmu2026";
@@ -52,9 +50,11 @@ try {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
+  const Database = (await import("better-sqlite3")).default;
   db = new Database(SETTINGS_DB);
+  console.log("💾 SQLite database terhubung.");
 } catch (e) {
-  console.error("⚠️ Gagal membuka SQLite, fallback ke settings.json:", e.message);
+  console.error("⚠️ SQLite tidak dapat dimuat, otomatis fallback ke settings.json:", e && e.message);
   db = null;
 }
 
