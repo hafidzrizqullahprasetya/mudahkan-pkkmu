@@ -96,55 +96,86 @@ if (fs.existsSync(sessionDir)) {
 }
 
 // Initialize WhatsApp Web Client with LocalAuth for session persistence
-const waClient = new Client({
-  authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
-  puppeteer: {
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--no-zygote",
-      "--disable-gpu"
-    ],
-  },
-});
+function createWaClient() {
+  const client = new Client({
+    authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
+    puppeteer: {
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
+      ],
+    },
+  });
 
-waClient.on("qr", async (qr) => {
-  console.log("\n==========================================");
-  console.log("SCAN QR CODE DENGAN WHATSAPP UNTUK LOGIN:");
-  console.log("==========================================\n");
-  qrcodeTerminal.generate(qr, { small: true });
+  client.on("qr", async (qr) => {
+    console.log("\n==========================================");
+    console.log("SCAN QR CODE DENGAN WHATSAPP UNTUK LOGIN:");
+    console.log("==========================================\n");
+    qrcodeTerminal.generate(qr, { small: true });
 
-  try {
-    latestQrImage = await QRCode.toDataURL(qr);
-  } catch (err) {
-    console.error("Gagal membuat data URL QR:", err);
+    try {
+      latestQrImage = await QRCode.toDataURL(qr);
+    } catch (err) {
+      console.error("Gagal membuat data URL QR:", err);
+    }
+  });
+
+  client.on("ready", () => {
+    console.log("✅ WhatsApp Web Bot siap dan terhubung!");
+    isWaReady = true;
+    latestQrImage = "";
+  });
+
+  client.on("authenticated", () => {
+    console.log("🔐 Autentikasi WhatsApp Berhasil.");
+  });
+
+  client.on("auth_failure", (msg) => {
+    console.error("❌ Gagal Autentikasi WhatsApp:", msg);
+  });
+
+  client.on("disconnected", (reason) => {
+    console.log("⚠️ WhatsApp Terputus:", reason);
+    isWaReady = false;
+  });
+
+  return client;
+}
+
+let waClient = createWaClient();
+
+// initialize dengan retry otomatis — jangan biarkan crash mematikan proses
+const MAX_INIT_RETRIES = 8;
+async function startWaClient() {
+  for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
+    try {
+      console.log(`🤖 Inisialisasi WhatsApp (percobaan ${attempt})...`);
+      await waClient.initialize();
+      return; // sukses, selesai
+    } catch (err) {
+      console.error(`❌ Inisialisasi gagal (percobaan ${attempt}):`, err && err.message);
+      if (attempt >= MAX_INIT_RETRIES) {
+        console.error("⛔ Semua percobaan inisialisasi WhatsApp gagal. Tetap menjalankan server HTTP.");
+        return;
+      }
+      try {
+        await waClient.destroy();
+      } catch (e) {}
+      waClient = createWaClient();
+      const delayMs = Math.min(10000, 3000 * attempt);
+      console.log(`⏳ Coba lagi dalam ${delayMs / 1000} detik...`);
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
   }
-});
+}
 
-waClient.on("ready", () => {
-  console.log("✅ WhatsApp Web Bot siap dan terhubung!");
-  isWaReady = true;
-  latestQrImage = "";
-});
-
-waClient.on("authenticated", () => {
-  console.log("🔐 Autentikasi WhatsApp Berhasil.");
-});
-
-waClient.on("auth_failure", (msg) => {
-  console.error("❌ Gagal Autentikasi WhatsApp:", msg);
-});
-
-waClient.on("disconnected", (reason) => {
-  console.log("⚠️ WhatsApp Terputus:", reason);
-  isWaReady = false;
-});
-
-waClient.initialize();
+startWaClient();
 
 // Format Phone Number to WhatsApp ID (628xxx@c.us)
 function formatWaNumber(phone) {
