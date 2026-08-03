@@ -41,9 +41,10 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Tell Puppeteer to use installed Chromium
+# Tell Puppeteer to use installed Chromium & set default PORT=5760
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PORT=5760
 
 WORKDIR /app
 
@@ -52,6 +53,6 @@ RUN npm install --production
 
 COPY . .
 
-EXPOSE 5000
+EXPOSE 5760
 
 CMD ["node", "server.js"]
