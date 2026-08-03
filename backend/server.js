@@ -1277,64 +1277,28 @@ app.post("/api/send-order-notif", async (req, res) => {
 
     const orderData = { name, nim, prodi, faculty, whatsapp, products, total, orderId, status: "PENDING" };
     if (orderId) {
-      ordersStore[orderId] = { name, nim, prodi, faculty, whatsapp, products, total };
+      ordersStore[orderId] = orderData;
     }
 
-    const orderData = ordersStore[orderId] || { name, nim, prodi, faculty, whatsapp, products, total };
-
-    const formattedNumber = formatWaNumber(whatsapp);
-    const productListText = Array.isArray(products) ? products.join(", ") : products;
-
-    const messageText = `MUDAHKAN PKKMU! - TAGIHAN PESANAN (MENUNGGU PEMBAYARAN)
-
-Halo kak *${name}*, pesanan atribut ospek UPN Veteran Yogyakarta 2026 kamu telah dibuat!
-
-Detail Tagihan Pesanan:
-• Order ID: *${orderId || "-"}*
-• NIM: *${nim || "-"}*
-• Program Studi: *${prodi || "-"}*
-• Lini PKKBN: *${faculty || "-"}*
-• Atribut: *${productListText || "-"}*
-• Total Pembayaran: *Rp ${Number(total || 0).toLocaleString("id-ID")}*
-
-STATUS: MENUNGGU PEMBAYARAN VIA QRIS (10 MENIT)
-Silakan selesaikan scan QRIS di website agar status pesanan kamu menjadi LUNAS dan terverifikasi otomatis.
-
-Grup WhatsApp Resmi Peserta:
-${WA_GROUP_LINK}
-
-_Pesan otomatis oleh bot Mudahkan PKKMU!_`;
-
-    if (isWaReady) {
-      await waClient.sendMessage(formattedNumber, messageText);
-      console.log(`📩 Notifikasi tagihan WA terkirim ke: ${formattedNumber}`);
-
-      // Kirim pesan koordinasi ke koordinator jika sudah diset
-      if (settings.coordWa) {
-        try {
-          const coordTarget = await resolveCoordTarget();
-          if (coordTarget) {
-            const coordText = buildCoordOrderText(orderData, false);
-            const coordMsg = await waClient.sendMessage(coordTarget, coordText);
-            console.log(`🤝 Pesan koordinasi terkirim ke koordinator: ${settings.coordWa} (${coordTarget})`);
-            if (orderId && coordMsg) {
-              ordersStore[orderId].coordMessage = coordMsg;
-            }
-          } else {
-            console.error(`⚠️ Target koordinasi tidak tersedia: ${settings.coordWa}`);
-          }
-        } catch (coordErr) {
-          console.error("Gagal kirim pesan koordinasi:", coordErr);
+    // Kirim notifikasi pesanan baru masuk ke grup 2Founders / Admin
+    if (isWaReady && settings.coordWa) {
+      try {
+        const coordTarget = await resolveCoordTarget();
+        if (coordTarget) {
+          const coordText = buildCoordOrderText(orderData);
+          await waClient.sendMessage(coordTarget, coordText);
+          console.log(`🤝 Pesan koordinasi pesanan baru terkirim ke: ${settings.coordWa} (${coordTarget})`);
+        } else {
+          console.error(`⚠️ Target koordinasi tidak ditemukan: ${settings.coordWa}`);
         }
+      } catch (coordErr) {
+        console.error("Gagal kirim pesan koordinasi:", coordErr);
       }
-
-      return res.json({ status: "success", message: "Notifikasi WA berhasil dikirim!" });
-    } else {
-      console.log("⚠️ WA Client belum ready, pesan ditunda/dilewati.");
-      return res.status(503).json({ status: "warning", message: "WhatsApp bot belum siap/scanned." });
     }
+
+    return res.json({ status: "success", message: "Pesanan berhasil disimpan di backend." });
   } catch (err) {
-    console.error("Gagal mengirim pesan WA:", err);
+    console.error("Gagal menyimpan data pesanan:", err);
     return res.status(500).json({ error: err.toString() });
   }
 });
