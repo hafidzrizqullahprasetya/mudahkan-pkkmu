@@ -286,82 +286,464 @@ app.get("/settings", (req, res) => {
 // Halaman utama / (landing) agar tidak "Cannot GET /"
 app.get("/", (req, res) => {
   res.setHeader("Content-Type", "text/html");
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="theme-color" content="#174b36" />
-      <title>Mudahkan PKKMU! | Notifikasi Bot</title>
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f2f0e9; color: #151714; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-        .shell { width: 100%; max-width: 560px; margin: auto; }
-        .hero { text-align: center; margin-bottom: 28px; }
-        .brand-mark { width: 72px; height: 72px; border-radius: 50%; background: #174b36; color: #f2f0e9; display: inline-grid; place-items: center; font-weight: 900; font-size: 26px; letter-spacing: 1px; border: 3px solid #151714; box-shadow: 4px 4px 0 #151714; margin-bottom: 18px; }
-        h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.5px; }
-        h1 span { color: #174b36; }
-        .sub { font-size: 14px; color: #555; margin-top: 6px; }
-        .card { background: #ffffff; border: 3px solid #151714; box-shadow: 4px 4px 0 #151714; padding: 26px; margin-bottom: 22px; }
-        .status-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 6px 12px; border: 2px solid #151714; border-radius: 999px; background: #f2f0e9; }
-        .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
-        .pill.ready .dot { background: #2e9e4f; }
-        .pill.not-ready .dot { background: #b3402a; }
-        .links { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .btn { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 2px solid #151714; background: #174b36; color: #f2f0e9; box-shadow: 3px 3px 0 #151714; text-decoration: none; transition: transform 0.1s ease, box-shadow 0.1s ease; }
-        .btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #151714; }
-        .btn small { display: block; font-size: 11px; text-transform: none; letter-spacing: 0; font-weight: 500; color: #cfe3d8; }
-        .btn--light { background: #f2f0e9; color: #151714; }
-        .btn--light small { color: #666; }
-        footer { text-align: center; font-size: 12px; color: #888; }
-        @media (max-width: 520px) { .links { grid-template-columns: 1fr; } }
-      </style>
-    </head>
-    <body>
-      <div class="shell">
-        <div class="hero">
-          <span class="brand-mark">PK</span>
-          <h1>Mudahkan <span>PKKMU!</span></h1>
-          <p class="sub">Backend notifikasi pesanan & WhatsApp bot</p>
-        </div>
+  res.send(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174b36" />
+  <title>Mudahkan PKKMU! | Backend Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #174b36;
+      --green-light: #b9d55f;
+      --paper: #f2f0e9;
+      --ink: #151714;
+      --muted: #6b6f68;
+      --red: #b3402a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "DM Sans", -apple-system, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+    }
 
-        <div class="card">
-          <div class="status-row">
-            <span class="pill" id="waPill"><span class="dot"></span> WhatsApp: memeriksa...</span>
-            <span class="pill" id="modePill">Mode: —</span>
-          </div>
-        </div>
+    /* ── TOP BAR ── */
+    .topbar {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(16px, 5vw, 48px);
+      background: var(--ink);
+      border-bottom: 2px solid #2a2e29;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--paper);
+      text-decoration: none;
+    }
+    .topbar-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      border: 2px solid var(--paper);
+      font: 900 13px/1 "Barlow Condensed";
+      color: var(--paper);
+      letter-spacing: 1px;
+    }
+    .topbar-title {
+      font: 800 15px/1 "Barlow Condensed";
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .topbar-title small {
+      display: block;
+      font: 500 10px/1 "DM Sans";
+      color: #8c9088;
+      text-transform: none;
+      letter-spacing: 0;
+      margin-top: 2px;
+    }
+    .topbar-links {
+      display: flex;
+      gap: 6px;
+    }
+    .topbar-link {
+      padding: 6px 14px;
+      font: 700 11px "DM Sans";
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #c0c4bc;
+      text-decoration: none;
+      border: 1.5px solid #3a3e39;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .topbar-link:hover { color: var(--green-light); border-color: var(--green-light); }
+    .topbar-link.primary {
+      color: var(--ink);
+      background: var(--green-light);
+      border-color: var(--green-light);
+    }
+    .topbar-link.primary:hover { background: #cde870; border-color: #cde870; }
 
-        <div class="links">
-          <a class="btn" href="/settings">Pengaturan<small>Mode & tujuan koordinasi</small></a>
-          <a class="btn btn--light" href="/qr">Scan WhatsApp<small>QR Code bot</small></a>
-        </div>
+    /* ── HERO STRIP ── */
+    .hero-strip {
+      background: var(--green);
+      padding: 48px clamp(16px, 5vw, 64px) 44px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 24px;
+      border-bottom: 3px solid var(--ink);
+    }
+    .hero-strip h1 {
+      font: 900 clamp(48px, 7vw, 88px)/.88 "Barlow Condensed";
+      color: var(--paper);
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
+    .hero-strip h1 span { color: var(--green-light); }
+    .hero-strip p {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #9ac2af;
+      line-height: 1.55;
+    }
+    .hero-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .version-tag {
+      padding: 4px 10px;
+      background: var(--green-light);
+      color: var(--ink);
+      font: 800 11px "Barlow Condensed";
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .uptime-tag {
+      font: 500 11px "DM Sans";
+      color: #7aa994;
+      letter-spacing: 0.04em;
+    }
 
-        <footer>Server notifikasi Mudahkan PKKMU! • pemekasliwongkito</footer>
+    /* ── MAIN LAYOUT ── */
+    .main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: clamp(24px, 4vw, 56px) clamp(16px, 5vw, 48px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 640px) { .main { grid-template-columns: 1fr; } }
+
+    /* ── STATUS CARD ── */
+    .status-section {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 640px) { .status-section { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      padding: 20px 22px;
+      background: #fff;
+      border: 2.5px solid var(--ink);
+      box-shadow: 4px 4px 0 var(--ink);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-label {
+      font: 700 11px "DM Sans";
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .stat-value {
+      font: 900 28px/1 "Barlow Condensed";
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stat-value .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #aaa;
+      flex-shrink: 0;
+    }
+    .dot-green { background: #2e9e4f !important; }
+    .dot-red { background: var(--red) !important; }
+    .dot-yellow { background: #c9a227 !important; }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* ── NAV CARD ── */
+    .nav-card {
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      border: 2.5px solid var(--ink);
+      box-shadow: 5px 5px 0 var(--ink);
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+      background: #fff;
+    }
+    .nav-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 var(--ink);
+    }
+    .nav-card-top {
+      padding: 6px 18px;
+      background: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-card-num {
+      font: 900 13px "Barlow Condensed";
+      color: var(--green-light);
+      letter-spacing: 0.04em;
+    }
+    .nav-card-arrow {
+      font-size: 16px;
+      color: #8c9088;
+    }
+    .nav-card-body {
+      padding: 22px 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .nav-card-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .nav-card-title {
+      font: 900 26px/1 "Barlow Condensed";
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .nav-card-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+      flex: 1;
+    }
+    .nav-card-footer {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1.5px solid #e8e6dd;
+      font: 700 11px "DM Sans";
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--green);
+    }
+    .nav-card--dark .nav-card-body { background: var(--green); }
+    .nav-card--dark .nav-card-title { color: var(--paper); }
+    .nav-card--dark .nav-card-desc { color: #9ac2af; }
+    .nav-card--dark .nav-card-footer { border-color: #2a5c44; color: var(--green-light); }
+    .nav-card--accent .nav-card-top { background: var(--green); }
+    .nav-card--accent .nav-card-num { color: var(--paper); }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      grid-column: 1 / -1;
+      padding: 18px 22px;
+      background: #fff8e6;
+      border: 2px solid #e5c158;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .info-box-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .info-box-text { font-size: 13px; line-height: 1.55; color: #5a4200; }
+    .info-box-text strong { color: #3d2d00; font-weight: 700; }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      padding: 20px clamp(16px, 5vw, 48px);
+      border-top: 2px solid var(--ink);
+      background: var(--ink);
+      color: #5a5e57;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .page-footer a { color: #7a9a80; text-decoration: none; }
+    .page-footer a:hover { color: var(--green-light); }
+  </style>
+</head>
+<body>
+  <nav class="topbar">
+    <a class="topbar-brand" href="/">
+      <div class="topbar-mark">PK</div>
+      <div class="topbar-title">
+        Mudahkan PKKMU!
+        <small>Backend Dashboard</small>
       </div>
+    </a>
+    <div class="topbar-links">
+      <a class="topbar-link" href="/qr">Scan WA</a>
+      <a class="topbar-link primary" href="/settings">Pengaturan</a>
+    </div>
+  </nav>
 
-      <script>
-        fetch("/api/health")
-          .then((r) => r.json())
-          .then((d) => {
-            const pill = document.getElementById("waPill");
-            const ready = d && d.whatsapp_ready;
-            pill.className = "pill " + (ready ? "ready" : "not-ready");
-            pill.innerHTML = '<span class="dot"></span> WhatsApp: ' + (ready ? "Terhubung" : "Belum terhubung");
-          })
-          .catch(() => {});
-        fetch("/api/settings")
-          .then((r) => r.json())
-          .then((d) => {
-            document.getElementById("modePill").textContent = "Mode: " + (d && d.mode === "testing" ? "TESTING" : "PRODUCTION");
-          })
-          .catch(() => {});
-      </script>
-    </body>
-    </html>
-  `);
+  <div class="hero-strip">
+    <div>
+      <h1>Backend<br/><span>Dashboard.</span></h1>
+      <p>Server notifikasi WhatsApp & webhook Midtrans<br/>untuk Mudahkan PKKMU! – UPNVYK 2026</p>
+    </div>
+    <div class="hero-badge">
+      <span class="version-tag">v2.0 Live</span>
+      <span class="uptime-tag" id="uptimeTag">port 5760</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- STATUS CARDS -->
+    <div class="status-section">
+      <div class="stat-card">
+        <div class="stat-label">WhatsApp Bot</div>
+        <div class="stat-value" id="waStatus">
+          <span class="dot" id="waDot"></span>
+          <span id="waText">Memeriksa...</span>
+        </div>
+        <div class="stat-sub" id="waSub">Menghubungi server...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mode Pembayaran</div>
+        <div class="stat-value" id="modeStatus">
+          <span class="dot dot-yellow" id="modeDot"></span>
+          <span id="modeText">—</span>
+        </div>
+        <div class="stat-sub" id="modeSub">Memuat pengaturan...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Server Status</div>
+        <div class="stat-value">
+          <span class="dot dot-green"></span>
+          Online
+        </div>
+        <div class="stat-sub">notif-pkk.pempekasliwongkito.my.id</div>
+      </div>
+    </div>
+
+    <!-- INFO BOX (shown only in testing mode) -->
+    <div class="info-box" id="testingBanner" style="display:none">
+      <span class="info-box-icon">🧪</span>
+      <div class="info-box-text">
+        <strong>Mode Testing Aktif</strong> — Semua transaksi akan dicharge <strong>Rp 1</strong> saat checkout. Ubah ke mode <em>Production</em> di halaman Pengaturan sebelum membuka pendaftaran nyata.
+      </div>
+    </div>
+
+    <!-- NAV CARDS -->
+    <a class="nav-card nav-card--dark" href="/settings">
+      <div class="nav-card-top">
+        <span class="nav-card-num">01</span>
+        <span class="nav-card-arrow">→</span>
+      </div>
+      <div class="nav-card-body">
+        <div class="nav-card-icon">⚙️</div>
+        <div class="nav-card-title">Pengaturan</div>
+        <div class="nav-card-desc">Ubah mode pembayaran (Testing / Produksi), atur nomor atau grup koordinasi WhatsApp, dan kelola PIN akses.</div>
+        <div class="nav-card-footer">Mode & koordinasi →</div>
+      </div>
+    </a>
+
+    <a class="nav-card nav-card--accent" href="/qr">
+      <div class="nav-card-top">
+        <span class="nav-card-num">02</span>
+        <span class="nav-card-arrow">→</span>
+      </div>
+      <div class="nav-card-body">
+        <div class="nav-card-icon">📱</div>
+        <div class="nav-card-title">Scan WhatsApp</div>
+        <div class="nav-card-desc">Tampilkan QR Code untuk menghubungkan akun WhatsApp ke bot. Scan ulang jika bot terputus.</div>
+        <div class="nav-card-footer">Buka halaman QR →</div>
+      </div>
+    </a>
+
+    <a class="nav-card" href="https://mudahkan-pkkmu.vercel.app" target="_blank" rel="noopener">
+      <div class="nav-card-top">
+        <span class="nav-card-num">03</span>
+        <span class="nav-card-arrow">↗</span>
+      </div>
+      <div class="nav-card-body">
+        <div class="nav-card-icon">🌐</div>
+        <div class="nav-card-title">Frontend</div>
+        <div class="nav-card-desc">Buka halaman pemesanan atribut PKKMU yang live di Vercel. Tempat mahasiswa mengisi form & membayar via QRIS.</div>
+        <div class="nav-card-footer">mudahkan-pkkmu.vercel.app →</div>
+      </div>
+    </a>
+
+    <a class="nav-card" href="/api/health" target="_blank" rel="noopener">
+      <div class="nav-card-top">
+        <span class="nav-card-num">04</span>
+        <span class="nav-card-arrow">↗</span>
+      </div>
+      <div class="nav-card-body">
+        <div class="nav-card-icon">🩺</div>
+        <div class="nav-card-title">Health Check</div>
+        <div class="nav-card-desc">Endpoint JSON untuk memeriksa status server dan koneksi WhatsApp secara real-time oleh monitoring eksternal.</div>
+        <div class="nav-card-footer">/api/health →</div>
+      </div>
+    </a>
+
+  </div>
+
+  <footer class="page-footer">
+    <span>© 2026 Mudahkan PKKMU! — <a href="https://mudahkan-pkkmu.vercel.app" target="_blank">mudahkan-pkkmu.vercel.app</a></span>
+    <span>Backend v2.0 • Node.js • whatsapp-web.js • Midtrans</span>
+  </footer>
+
+  <script>
+    const startTs = Date.now();
+    fetch("/api/health")
+      .then(r => r.json())
+      .then(d => {
+        const ready = d && d.whatsapp_ready;
+        document.getElementById("waDot").className = "dot " + (ready ? "dot-green" : "dot-red");
+        document.getElementById("waText").textContent = ready ? "Terhubung" : "Tidak terhubung";
+        document.getElementById("waSub").textContent = ready
+          ? "Bot aktif dan siap mengirim notifikasi"
+          : "Scan QR Code untuk menghubungkan WhatsApp";
+        const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+        document.getElementById("uptimeTag").textContent = "response " + elapsed + "s";
+      })
+      .catch(() => {
+        document.getElementById("waText").textContent = "Gagal memeriksa";
+        document.getElementById("waSub").textContent = "Tidak dapat menghubungi server";
+      });
+
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then(d => {
+        const isTesting = d && d.mode === "testing";
+        document.getElementById("modeDot").className = "dot " + (isTesting ? "dot-yellow" : "dot-green");
+        document.getElementById("modeText").textContent = isTesting ? "Testing" : "Production";
+        document.getElementById("modeSub").textContent = isTesting
+          ? "Transaksi dicharge Rp 1 (mode uji coba)"
+          : "Transaksi menggunakan harga nyata";
+        if (isTesting) document.getElementById("testingBanner").style.display = "flex";
+      })
+      .catch(() => {
+        document.getElementById("modeText").textContent = "Tidak diketahui";
+        document.getElementById("modeSub").textContent = "Gagal memuat pengaturan";
+      });
+  </script>
+</body>
+</html>`);
 });
 
 // Ambil pengaturan (tanpa PIN aman? tanpa PIN hanya kembalikan mode)
