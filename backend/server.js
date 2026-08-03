@@ -1,4 +1,4 @@
-// Auto-deploy trigger test for Host mode binding
+// Auto-deploy trigger for Backend server - 2026-08-03
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
