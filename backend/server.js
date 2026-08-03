@@ -260,30 +260,33 @@ function formatWaNumber(phone) {
 async function resolveCoordTarget() {
   if (!settings.coordWa || !isWaReady) return null;
 
-  if (settings.coordType === "group") {
-    const name = settings.coordWa.trim().toLowerCase();
-    const chats = await waClient.getChats();
-    const groupChat = chats.find(
-      (chat) => chat.isGroup && chat.name && chat.name.toLowerCase() === name
-    );
-    if (groupChat) {
-      return groupChat.id._serialized;
+  const targetStr = settings.coordWa.trim();
+  const isDigitsOnly = /^\+?\d+$/.test(targetStr);
+
+  // Jika tipe = "group" atau string berisi huruf (seperti nama grup "2Founders")
+  if (settings.coordType === "group" || !isDigitsOnly) {
+    const nameLower = targetStr.toLowerCase();
+    try {
+      const chats = await waClient.getChats();
+      const groupChat = chats.find(
+        (chat) => chat.isGroup && chat.name && chat.name.toLowerCase() === nameLower
+      );
+      if (groupChat) {
+        return groupChat.id._serialized;
+      }
+      // Fallback: pencocokan parsial nama grup
+      const partialMatch = chats.find(
+        (chat) => chat.isGroup && chat.name && chat.name.toLowerCase().includes(nameLower)
+      );
+      if (partialMatch) {
+        return partialMatch.id._serialized;
+      }
+    } catch (e) {
+      console.error("Error resolveCoordTarget group search:", e);
     }
-    // Fallback: cari lewat kode undangan (link chat.whatsapp.com/<code>)
-    const byInvite = chats.find(
-      (chat) =>
-        chat.isGroup &&
-        chat.inviteCode &&
-        settings.coordWa.trim().toLowerCase().includes(chat.inviteCode.toLowerCase())
-    );
-    if (byInvite) {
-      return byInvite.id._serialized;
-    }
-    console.error(`❌ Grup koordinasi "${settings.coordWa}" tidak ditemukan di chat bot.`);
-    return null;
   }
 
-  return formatWaNumber(settings.coordWa);
+  return formatWaNumber(targetStr);
 }
 
 // Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
