@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174b36" />
+  <title>Pengaturan | Mudahkan PKKMU!</title>
+  <style>
+    :root {
+      --green: #174b36;
+      --green-dark: #0e2e21;
+      --cream: #f2f0e9;
+      --ink: #151714;
+      --paper: #ffffff;
+      --gold: #c9a227;
+      --red: #b3402a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    header.top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .brand-mark {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--green);
+      color: var(--cream);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 20px;
+      letter-spacing: 1px;
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+
+    header.top h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    header.top h1 span { color: var(--green); }
+    header.top small {
+      display: block;
+      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
+      color: #555;
+      font-weight: 500;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 8px 8px 0 var(--ink);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: var(--cream);
+    }
+    .pill .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #aaa;
+    }
+    .pill.ready .dot { background: #2e9e4f; }
+    .pill.not-ready .dot { background: var(--red); }
+
+    .mode-tag {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 6px 12px;
+      border: 2px solid var(--ink);
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    h2.field-title {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .field-desc {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .mode-option {
+      position: relative;
+      border: 2px solid var(--ink);
+      padding: 16px;
+      cursor: pointer;
+      background: var(--cream);
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .mode-option:hover { background: #e9e6dc; }
+    .mode-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .mode-option.selected {
+      background: var(--green);
+      color: var(--cream);
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+    .mode-option.selected .mode-note { color: #cfe3d8; }
+    .mode-option b {
+      display: block;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .mode-note { font-size: 12px; color: #666; line-height: 1.4; }
+
+    label.field {
+      display: block;
+      margin-bottom: 20px;
+    }
+    label.field > span {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="password"], input[type="tel"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      border: 2px solid var(--ink);
+      background: var(--cream);
+      font-family: inherit;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(23, 75, 54, 0.25);
+    }
+    .input-hint {
+      display: block;
+      font-size: 12px;
+      color: #777;
+      margin-top: 5px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn {
+      padding: 13px 22px;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 2px solid var(--ink);
+      background: var(--green);
+      color: var(--cream);
+      box-shadow: 4px 4px 0 var(--ink);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+    .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn--light {
+      background: var(--cream);
+      color: var(--ink);
+    }
+    .btn--red {
+      background: var(--red);
+      color: var(--cream);
+    }
+
+    .msg {
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 14px;
+      border: 2px solid var(--ink);
+      margin-bottom: 18px;
+      display: none;
+    }
+    .msg.ok { background: #d9ead9; display: block; }
+    .msg.err { background: #f4d9d2; display: block; }
+
+    .login-card .brand-mark { margin: 0 auto 18px; width: 64px; height: 64px; font-size: 24px; }
+    .login-card { text-align: center; }
+    .login-card h2 { font-size: 20px; margin-bottom: 4px; text-transform: uppercase; }
+    .login-card p { font-size: 14px; color: #555; margin-bottom: 20px; }
+    .login-card .btn { width: 100%; }
+
+    footer.credit {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-top: 18px;
+    }
+    footer.credit a {
+      color: var(--green);
+      font-weight: 700;
+      text-decoration: none;
+      border-bottom: 2px solid currentColor;
+    }
+
+    .preview-box {
+      margin-top: 24px;
+      border: 2px dashed #999;
+      padding: 16px;
+      background: #faf8f2;
+    }
+    .preview-box h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #777;
+      margin-bottom: 10px;
+    }
+    .preview-box pre {
+      font-family: "SF Mono", Menlo, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+
+    @media (max-width: 520px) {
+      .mode-grid { grid-template-columns: 1fr; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <span class="brand-mark">PK</span>
+      <h1>Mudahkan <span>PKKMU!</span><small>Panel Pengaturan Notifikasi</small></h1>
+    </header>
+
+    <!-- ===== LOCK / LOGIN ===== -->
+    <div class="card login-card" id="loginCard">
+      <span class="brand-mark">🔒</span>
+      <h2>Kunci Pengaturan</h2>
+      <p>Masukkan PIN untuk membuka panel pengaturan.</p>
+      <form id="loginForm">
+        <input type="password" id="pinInput" placeholder="Masukkan PIN" autocomplete="current-password" style="margin-bottom:14px;" />
+        <button class="btn" type="submit">Buka Panel ↗</button>
+      </form>
+    </div>
+
+    <!-- ===== SETTINGS PANEL ===== -->
+    <div class="card" id="settingsCard" style="display:none;">
+      <div class="msg" id="msg"></div>
+
+      <div class="status-row">
+        <span class="pill" id="waPill"><span class="dot"></span> WhatsApp: memeriksa...</span>
+        <span class="mode-tag" id="modeTag">—</span>
+      </div>
+
+      <h2 class="field-title">Mode Pembayaran</h2>
+      <p class="field-desc">Testing menampilkan Rp 1 saat scan QRIS (transaksi uji). Production memakai nominal asli.</p>
+
+      <div class="mode-grid" id="modeGrid">
+        <div class="mode-option" data-mode="production">
+          <input type="radio" name="mode" value="production" id="modeProduction" />
+          <b>Production</b>
+          <span class="mode-note">Nominal asli sesuai produk yang dipesan.</span>
+        </div>
+        <div class="mode-option" data-mode="testing">
+          <input type="radio" name="mode" value="testing" id="modeTesting" />
+          <b>Testing</b>
+          <span class="mode-note">Semua transaksi jadi Rp 1 untuk uji coba.</span>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Tujuan WA Koordinasi</span>
+        <input type="tel" id="coordWa" placeholder="Contoh: 081234567890" />
+        <span class="input-hint">Pesan pesanan masuk & status bayar akan dikirim ke nomor ini. Khusus koordinasi panitia.</span>
+      </label>
+
+      <label class="field">
+        <span>Ganti PIN (opsional)</span>
+        <input type="password" id="newPin" placeholder="Kosongkan jika tidak diganti" autocomplete="new-password" />
+        <span class="input-hint">Minimal 4 karakter. PIN saat ini: tersimpan di settings.json.</span>
+      </label>
+
+      <div class="actions">
+        <button class="btn" id="saveBtn" type="button">Simpan Pengaturan</button>
+        <button class="btn btn--light" id="logoutBtn" type="button">Kunci Lagi</button>
+      </div>
+
+      <div class="preview-box">
+        <h3>Pratinjau Pesan Koordinasi</h3>
+        <pre id="preview"></pre>
+      </div>
+    </div>
+
+    <footer class="credit">
+      <a href="/qr">Scan QR WhatsApp Bot</a> &nbsp;•&nbsp; <a href="/api/health">Cek Status</a>
+    </footer>
+  </div>
+
+  <script>
+    let currentPin = null;
+
+    const $ = (id) => document.getElementById(id);
+    const loginCard = $("loginCard");
+    const settingsCard = $("settingsCard");
+    const msg = $("msg");
+
+    function showMsg(text, ok) {
+      msg.textContent = text;
+      msg.className = "msg " + (ok ? "ok" : "err");
+      setTimeout(() => { msg.className = "msg"; }, 4000);
+    }
+
+    async function api(url, options) {
+      const res = await fetch(url, options);
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, data };
+    }
+
+    async function loadWaStatus() {
+      const { data } = await api("/api/health");
+      const pill = $("waPill");
+      const ready = data && data.whatsapp_ready;
+      pill.className = "pill " + (ready ? "ready" : "not-ready");
+      pill.innerHTML = '<span class="dot"></span> WhatsApp: ' + (ready ? "Terhubung" : "Belum terhubung");
+    }
+
+    function refreshPreview() {
+      const mode = document.querySelector('input[name="mode"]:checked')?.value || "production";
+      const coordWa = $("coordWa").value.trim() || "081234567890";
+      const total = mode === "testing" ? "1" : "25.000";
+      $("preview").textContent =
+`📦 *PESANAN BARU MASUK*
+────────────────
+🆔 Order ID: *PKKMU-1785xxxxxxx*
+👤 Nama: *Contoh Mahasiswa*
+🎓 NIM: *111260004*
+🏫 Lini PKKBN: *PKKBN FEB*
+📚 Program Studi: *Manajemen*
+📞 WA Pembeli: *081234567890*
+🛍️ Produk: *Lanyard, Cocard*
+💰 Total: *Rp ${total}*
+⏳ Status: *MENUNGGU PEMBAYARAN*
+
+→ (setelah bayar, pesan ini di-edit jadi SUDAH BAYAR ✅)
+Kirim ke: ${coordWa}`;
+    }
+
+    function setModeUI(mode) {
+      document.querySelectorAll(".mode-option").forEach((opt) => {
+        const selected = opt.dataset.mode === mode;
+        opt.classList.toggle("selected", selected);
+        opt.querySelector("input").checked = selected;
+      });
+      $("modeTag").textContent = mode === "testing" ? "MODE TESTING" : "MODE PRODUCTION";
+    }
+
+    // Pilih mode
+    document.querySelectorAll(".mode-option").forEach((opt) => {
+      opt.addEventListener("click", () => {
+        setModeUI(opt.dataset.mode);
+        refreshPreview();
+      });
+    });
+
+    // Login
+    $("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pin = $("pinInput").value.trim();
+      const { ok, data } = await api("/api/settings?pin=" + encodeURIComponent(pin));
+      if (!ok || data.locked) {
+        showMsg("PIN salah. Coba lagi.", false);
+        return;
+      }
+      currentPin = pin;
+      loginCard.style.display = "none";
+      settingsCard.style.display = "block";
+      setModeUI(data.mode || "production");
+      $("coordWa").value = data.coordWa || "";
+      refreshPreview();
+      loadWaStatus();
+    });
+
+    // Simpan
+    $("saveBtn").addEventListener("click", async () => {
+      const mode = document.querySelector('input[name="mode"]:checked')?.value || "production";
+      const coordWa = $("coordWa").value.trim();
+      const newPin = $("newPin").value.trim();
+      const { ok, data } = await api("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: currentPin, mode, coordWa, newPin: newPin || undefined }),
+      });
+      if (!ok) {
+        showMsg(data.error || "Gagal menyimpan.", false);
+        return;
+      }
+      $("newPin").value = "";
+      showMsg("Pengaturan tersimpan ✓", true);
+      setModeUI(data.mode);
+    });
+
+    // Kunci lagi
+    $("logoutBtn").addEventListener("click", () => {
+      currentPin = null;
+      $("pinInput").value = "";
+      $("newPin").value = "";
+      settingsCard.style.display = "none";
+      loginCard.style.display = "block";
+    });
+  </script>
+</body>
+</html>

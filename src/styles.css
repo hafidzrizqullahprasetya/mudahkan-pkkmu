@@ -321,6 +321,7 @@ footer > strong i { color: var(--green-light); font-style: normal; }
 .qris-amount-row span { font-weight: 700; font-size: 13px; text-transform: uppercase; }
 .qris-amount-row strong { font: 900 24px "Barlow Condensed"; color: var(--ink); }
 .qris-order-details { width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 12px; text-align: left; padding-top: 6px; border-top: 1px dashed #ccc; }
+.qris-testing-badge { width: 100%; margin-top: 10px; padding: 8px 12px; text-align: center; background: #151714; color: #f2c33a; border: 1.5px solid #f2c33a; font: 800 12px "DM Sans"; letter-spacing: 0.6px; text-transform: uppercase; }
 .order-detail-line { display: flex; justify-content: space-between; color: #444; }
 .order-detail-line b { color: var(--ink); font-weight: 700; }
 .qris-scan-help { font-size: 13px; color: var(--muted); margin: 0 0 14px; text-align: center; line-height: 1.4; }

@@ -24,6 +24,58 @@ const ordersStore = {};
 let latestQrImage = "";
 let isWaReady = false;
 
+// ===== Pengaturan (settings.json) =====
+const SETTINGS_FILE = path.resolve("./settings.json");
+const DEFAULT_PIN = process.env.SETTINGS_PIN || "pkkmu2026";
+
+let settings = {
+  mode: "production", // "production" | "testing"
+  coordWa: "",        // Nomor WA koordinator (khusus koordinasi)
+  pin: DEFAULT_PIN,
+};
+
+function loadSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf8"));
+      settings = { ...settings, ...saved };
+    }
+  } catch (e) {
+    console.error("Gagal membaca settings.json:", e);
+  }
+}
+
+function saveSettings() {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  } catch (e) {
+    console.error("Gagal menyimpan settings.json:", e);
+  }
+}
+
+loadSettings();
+
+function buildCoordOrderText(orderData, paid) {
+  const productListText = Array.isArray(orderData.products)
+    ? orderData.products.join(", ")
+    : orderData.products;
+  const statusLine = paid
+    ? "✅ Status: *SUDAH BAYAR (LUNAS)*"
+    : "⏳ Status: *MENUNGGU PEMBAYARAN*";
+
+  return `📦 *PESANAN BARU MASUK*
+────────────────
+🆔 Order ID: *${orderData.orderId || "-"}*
+👤 Nama: *${orderData.name || "-"}*
+🎓 NIM: *${orderData.nim || "-"}*
+🏫 Lini PKKBN: *${orderData.faculty || "-"}*
+📚 Program Studi: *${orderData.prodi || "-"}*
+📞 WA Pembeli: *${orderData.whatsapp || "-"}*
+🛍️ Produk: *${productListText || "-"}*
+💰 Total: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}*
+${statusLine}`;
+}
+
 // Clean all stale Chromium locks before initializing
 const sessionDir = path.resolve("./.wwebjs_auth/session");
 if (fs.existsSync(sessionDir)) {
@@ -189,6 +241,50 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Halaman pengaturan /settings
+app.get("/settings", (req, res) => {
+  res.sendFile(path.resolve("./settings.html"));
+});
+
+// Ambil pengaturan (tanpa PIN aman? tanpa PIN hanya kembalikan mode)
+app.get("/api/settings", (req, res) => {
+  const { pin } = req.query;
+  const isAuth = settings.pin && pin === settings.pin;
+  res.json({
+    mode: settings.mode,
+    coordWa: isAuth ? settings.coordWa : "",
+    locked: !isAuth,
+    whatsapp_ready: isWaReady,
+  });
+});
+
+// Simpan pengaturan (wajib PIN)
+app.post("/api/settings", (req, res) => {
+  const { pin, mode, coordWa, newPin } = req.body || {};
+
+  if (!settings.pin || pin !== settings.pin) {
+    return res.status(401).json({ error: "PIN salah." });
+  }
+
+  if (mode === "production" || mode === "testing") {
+    settings.mode = mode;
+  }
+  if (typeof coordWa === "string") {
+    settings.coordWa = coordWa.trim();
+  }
+  if (newPin && newPin.trim().length >= 4) {
+    settings.pin = newPin.trim();
+  }
+
+  saveSettings();
+  res.json({
+    status: "success",
+    mode: settings.mode,
+    coordWa: settings.coordWa,
+    whatsapp_ready: isWaReady,
+  });
+});
+
 // Endpoint untuk mengirim notifikasi awal pesanan ke WhatsApp
 app.post("/api/send-order-notif", async (req, res) => {
   try {
@@ -201,6 +297,8 @@ app.post("/api/send-order-notif", async (req, res) => {
     if (orderId) {
       ordersStore[orderId] = { name, nim, prodi, faculty, whatsapp, products, total };
     }
+
+    const orderData = ordersStore[orderId] || { name, nim, prodi, faculty, whatsapp, products, total };
 
     const formattedNumber = formatWaNumber(whatsapp);
     const productListText = Array.isArray(products) ? products.join(", ") : products;
@@ -228,6 +326,21 @@ _Pesan ini dikirim otomatis oleh bot Mudahkan PKKMU!_`;
     if (isWaReady) {
       await waClient.sendMessage(formattedNumber, messageText);
       console.log(`📩 Notifikasi tagihan WA terkirim ke: ${formattedNumber}`);
+
+      // Kirim pesan koordinasi ke nomor koordinator jika sudah diset
+      if (settings.coordWa) {
+        try {
+          const coordText = buildCoordOrderText(orderData, false);
+          const coordMsg = await waClient.sendMessage(formatWaNumber(settings.coordWa), coordText);
+          console.log(`🤝 Pesan koordinasi terkirim ke koordinator: ${settings.coordWa}`);
+          if (orderId && coordMsg) {
+            ordersStore[orderId].coordMessage = coordMsg;
+          }
+        } catch (coordErr) {
+          console.error("Gagal kirim pesan koordinasi:", coordErr);
+        }
+      }
+
       return res.json({ status: "success", message: "Notifikasi WA berhasil dikirim!" });
     } else {
       console.log("⚠️ WA Client belum ready, pesan ditunda/dilewati.");
@@ -285,6 +398,17 @@ _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
 
         await waClient.sendMessage(formattedNumber, successMsg);
         console.log(`📩 Notifikasi PEMBAYARAN LUNAS terkirim via WA ke: ${formattedNumber}`);
+
+        // Edit pesan koordinasi sebelumnya menjadi SUDAH BAYAR
+        if (orderData.coordMessage && orderData.coordMessage.edit) {
+          try {
+            const coordPaidText = buildCoordOrderText(orderData, true);
+            await orderData.coordMessage.edit(coordPaidText);
+            console.log(`✏️ Pesan koordinasi di-edit menjadi SUDAH BAYAR untuk: ${orderId}`);
+          } catch (editErr) {
+            console.error("Gagal edit pesan koordinasi:", editErr);
+          }
+        }
       }
     }
 

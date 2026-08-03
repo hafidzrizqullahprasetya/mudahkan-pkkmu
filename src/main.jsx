@@ -421,7 +421,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
 }
 
 const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwYhGuKRLB5dWD4gTR6W3dG4SEwBX-YfgVuomj_3D6Iqy9_2Nf7DiBR98D8N20QOiVl-A/exec";
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://notif-pkk.pempekasliwongkito.my.id";
 
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
@@ -443,9 +443,22 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [activeIgTarget, setActiveIgTarget] = useState(null);
+  const [payMode, setPayMode] = useState("production");
 
   const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
   const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
+
+  useEffect(() => {
+    if (!BACKEND_URL) return;
+    fetch(`${BACKEND_URL}/api/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && (data.mode === "testing" || data.mode === "production")) {
+          setPayMode(data.mode);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!submitted || timeLeft <= 0) return;
@@ -513,11 +526,13 @@ function App() {
           total: total,
         };
 
+        const chargeTotal = payMode === "testing" ? 1 : total;
+
         if (BACKEND_URL) {
           fetch(`${BACKEND_URL}/api/send-order-notif`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ ...payload, total: chargeTotal }),
           }).catch((e) => console.log("WA notification error:", e));
         }
 
@@ -525,31 +540,32 @@ function App() {
           const res = await fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ ...payload, total: chargeTotal }),
           });
           const result = await res.json().catch(() => null);
           if (result && result.qr_url) {
-            setPaymentData(result);
+            setPaymentData({ ...result, gross_amount: chargeTotal });
           } else {
             setPaymentData({
-              qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${total}`,
+              qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
               order_id: generatedOrderId,
-              gross_amount: total,
+              gross_amount: chargeTotal,
             });
           }
         } else {
           setPaymentData({
-            qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${total}`,
+            qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
             order_id: generatedOrderId,
-            gross_amount: total,
+            gross_amount: chargeTotal,
           });
         }
       } catch (err) {
         console.error("Gagal mengirim data ke Backend:", err);
+        const chargeTotal = payMode === "testing" ? 1 : total;
         setPaymentData({
-          qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${total}`,
+          qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
           order_id: generatedOrderId,
-          gross_amount: total,
+          gross_amount: chargeTotal,
         });
       } finally {
         setIsSubmitting(false);
@@ -837,6 +853,10 @@ function App() {
                 <span>Total Pembayaran</span>
                 <strong>{rupiah(paymentData?.gross_amount || total)}</strong>
               </div>
+
+              {payMode === "testing" && (
+                <div className="qris-testing-badge">🧪 MODE TESTING — TRANSAKSI UJI (Rp 1)</div>
+              )}
 
               <div className="qris-order-details">
                 <div className="order-detail-line"><span>Order ID:</span><b>{paymentData?.order_id || `PKKMU-${Date.now()}`}</b></div>
