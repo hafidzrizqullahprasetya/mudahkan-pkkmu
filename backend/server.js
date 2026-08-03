@@ -16,6 +16,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5760;
 const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjbmOrGYeMtpz3222zieVeneHEsw5kf5S7loVQqRe2Gc54gDJyyMfVKNX13XZ-kupbvw/exec";
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
@@ -1338,6 +1339,11 @@ app.post("/api/midtrans-webhook", async (req, res) => {
       (fraudStatus === "accept" || !fraudStatus)
     ) {
       console.log(`✅ Pembayaran QRIS LUNAS untuk Order ID: ${orderId}`);
+      if (!ordersStore[orderId]) {
+        ordersStore[orderId] = { orderId, status: "PAID" };
+      } else {
+        ordersStore[orderId].status = "PAID";
+      }
       const orderData = ordersStore[orderId];
 
       if (orderData && isWaReady) {

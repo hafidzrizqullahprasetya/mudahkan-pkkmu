@@ -513,7 +513,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
   );
 }
 
-const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwYhGuKRLB5dWD4gTR6W3dG4SEwBX-YfgVuomj_3D6Iqy9_2Nf7DiBR98D8N20QOiVl-A/exec";
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbwjbmOrGYeMtpz3222zieVeneHEsw5kf5S7loVQqRe2Gc54gDJyyMfVKNX13XZ-kupbvw/exec";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://notif-pkk.pempekasliwongkito.my.id";
 
 const fileToBase64 = (file) => {
@@ -605,7 +605,11 @@ function App() {
   useEffect(() => {
     if (!submitted || !paymentData?.order_id || isPaid) return;
     checkStatusNow();
-    const interval = setInterval(checkStatusNow, 2000);
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        checkStatusNow();
+      }
+    }, 4000);
     return () => clearInterval(interval);
   }, [submitted, paymentData, isPaid]);
 
@@ -1199,19 +1203,16 @@ function App() {
                       className="button button--secondary"
                       onClick={checkStatusNow}
                       disabled={checkingStatus}
-                      style={{ background: "#e8efe9", color: "#174b36", borderColor: "#174b36" }}
+                      style={{ background: "#e8efe9", color: "#174b36", borderColor: "#174b36", fontWeight: "bold" }}
                     >
-                      {checkingStatus ? "⏳ Cek Status..." : "🔄 Cek Status Bayar"}
+                      {checkingStatus ? "⏳ Mengecek..." : "🔄 Cek Status Bayar"}
                     </button>
-                    <a className="button whatsapp-button" href={whatsappGroupUrl} target="_blank" rel="noreferrer">
-                      Sudah Bayar? Masuk grup WhatsApp ↗
-                    </a>
                     <button
                       type="button"
                       className="button button--cancel"
                       onClick={() => setSubmitted(false)}
                     >
-                      Tutup / Selesai
+                      Batalkan / Tutup
                     </button>
                   </div>
                 </div>
