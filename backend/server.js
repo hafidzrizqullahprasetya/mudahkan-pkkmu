@@ -411,8 +411,12 @@ const CHATS_CACHE_TTL = 15000;
 async function fetchChatsFromStore() {
   const raw = await waClient.pupPage.evaluate(() => {
     const out = [];
-    const ChatStore = window.Store && window.Store.Chat;
-    const models = ChatStore && ChatStore.models ? ChatStore.models : [];
+    let models = [];
+    try {
+      models = window.require("WAWebCollections").Chat.getModelsArray() || [];
+    } catch (e) {
+      return { __error: e.toString() };
+    }
     for (const c of models) {
       try {
         const id = c && c.id && c.id._serialized;
@@ -422,19 +426,19 @@ async function fetchChatsFromStore() {
           try { inviteCode = c.inviteCode || ""; } catch (e) {}
           out.push({
             type: "group",
-            name: c.name || c.id.user || "Grup tanpa nama",
+            name: c.name || c.formattedTitle || c.id.user || "Grup tanpa nama",
             id,
             inviteCode,
           });
         } else if (id.endsWith("@c.us")) {
-          let name = c.name || "";
+          let name = "";
           try {
             const contact = c.contact;
-            if (contact) name = contact.name || contact.pushname || contact.formattedName || name;
+            if (contact) name = contact.name || contact.pushname || contact.formattedName || contact.formattedTitle || name;
           } catch (e) {}
           out.push({
             type: "wa",
-            name: name || c.id.user || "Nomor tanpa nama",
+            name: name || c.formattedTitle || c.id.user || "Nomor tanpa nama",
             phone: c.id.user || "",
             id,
           });
@@ -443,6 +447,7 @@ async function fetchChatsFromStore() {
     }
     return out;
   });
+  if (raw && raw.__error) throw new Error(raw.__error);
   return (raw || []).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 }
 
