@@ -43,6 +43,44 @@ main { overflow-x: clip; }
 .button--dark { color: var(--paper); background: var(--ink); }
 .button--dark:hover { background: var(--green); }
 .button span { font-size: 18px; }
+
+@keyframes heroBtnBounce {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 3px 3px 0 var(--green);
+  }
+  50% {
+    transform: translateY(-6px);
+    box-shadow: 4px 10px 0 var(--green);
+  }
+}
+
+@keyframes arrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.hero-btn-pulse {
+  animation: heroBtnBounce 2.2s infinite ease-in-out;
+  background: var(--ink);
+  color: var(--paper);
+  border: 2px solid var(--ink);
+}
+
+.hero-btn-pulse span {
+  display: inline-block;
+  animation: arrowBounce 1.2s infinite ease-in-out;
+  color: var(--green-light);
+}
+
+.hero-btn-pulse:hover {
+  background: var(--green);
+  animation-play-state: paused;
+}
 .hero-collage { margin-left: 4vw; position: relative; min-height: 560px; }
 .photo { position: absolute; overflow: hidden; border: 7px solid var(--paper); filter: grayscale(1) contrast(1.18); box-shadow: 0 0 0 2px var(--ink); }
 .photo--large { width: 88%; height: 82%; left: 4%; top: 4%; transform: rotate(1deg); filter: contrast(1.05); }

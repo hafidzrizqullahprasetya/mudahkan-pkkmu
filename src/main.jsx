@@ -597,7 +597,7 @@ function App() {
           <p className="kicker">Atribut ospek mahasiswa baru / 2026</p>
           <h1>MUDAHKAN<br /><span>PKKMU!</span></h1>
           <p className="hero-lead">Lanyard, cocard, dan booklet untuk langkah pertamamu sebagai mahasiswa UPN Veteran Yogyakarta.</p>
-          <button type="button" className="button button--dark" onClick={scrollToForm}>Isi form sekarang <span>↓</span></button>
+          <button type="button" className="button button--dark hero-btn-pulse" onClick={scrollToForm}>Isi form sekarang <span>↓</span></button>
         </div>
         <div className="hero-collage" aria-label="Foto Kampus UPN Veteran Yogyakarta">
           <div className="photo photo--large">
