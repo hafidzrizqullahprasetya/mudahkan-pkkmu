@@ -597,7 +597,7 @@ function App() {
           <p className="kicker">Atribut ospek mahasiswa baru / 2026</p>
           <h1>MUDAHKAN<br /><span>PKKMU!</span></h1>
           <p className="hero-lead">Lanyard, cocard, dan booklet untuk langkah pertamamu sebagai mahasiswa UPN Veteran Yogyakarta.</p>
-          <a className="button button--dark" href="#produk">Lihat produk <span>↓</span></a>
+          <button type="button" className="button button--dark" onClick={scrollToForm}>Isi form sekarang <span>↓</span></button>
         </div>
         <div className="hero-collage" aria-label="Foto Kampus UPN Veteran Yogyakarta">
           <div className="photo photo--large">
@@ -784,7 +784,7 @@ function App() {
           </span>
           <b>MUDAHKAN<br />PKKMU!</b>
         </div>
-        <p>Portal demo pemesanan atribut mahasiswa baru.<br />Belum menerima transaksi nyata.</p>
+        <p>Portal pemesanan atribut resmi ospek UPN Veteran Yogyakarta 2026.</p>
         <div className="footer-links">
           <a href="#produk">Produk</a>
           <a href="#pesan">Form pesanan</a>
