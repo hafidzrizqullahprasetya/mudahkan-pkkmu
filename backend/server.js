@@ -16,7 +16,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5760;
 const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAgrTYBN14QFYpxvkMzQFmSrmsCPALtwkapviRIvkUQ4xSuuXN4DKpbpWPf9z1JYoiFQ/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhOZiUdms7MP1K4jRdCxYIiRx2xYosCmyocxx9XZYg_LJPL7qbVEJmA18BXjJoon3gLg/exec";
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
