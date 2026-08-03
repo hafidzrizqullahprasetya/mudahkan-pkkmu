@@ -604,13 +604,36 @@ function App() {
 
   useEffect(() => {
     if (!submitted || !paymentData?.order_id || isPaid) return;
+
     checkStatusNow();
+
+    let eventSource = null;
+    try {
+      if (BACKEND_URL && typeof EventSource !== "undefined") {
+        eventSource = new EventSource(`${BACKEND_URL}/api/payment-stream?orderId=${paymentData.order_id}`);
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("⚡ [SSE Realtime Event Received]:", data);
+            if (data && data.paid) {
+              setIsPaid(true);
+              if (eventSource) eventSource.close();
+            }
+          } catch (e) {}
+        };
+      }
+    } catch (e) {}
+
     const interval = setInterval(() => {
       if (!document.hidden) {
         checkStatusNow();
       }
-    }, 4000);
-    return () => clearInterval(interval);
+    }, 6000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      clearInterval(interval);
+    };
   }, [submitted, paymentData, isPaid]);
 
   useEffect(() => {

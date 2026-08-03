@@ -556,15 +556,16 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
         return;
       }
       el.innerHTML = filtered.map((c) => {
+        const jidVal = c.id || c.phone || "";
         const sub = c.type === "group"
-          ? (c.inviteCode ? "Grup • kode: " + c.inviteCode : "Grup WhatsApp")
-          : "WA • " + (c.phone || "");
+          ? (c.id ? "Grup • JID: " + c.id : "Grup WhatsApp")
+          : "WA • " + (c.id || c.phone || "");
         return `
-          <div class="chat-item" data-type="${c.type}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || "")}">
+          <div class="chat-item" data-type="${c.type}" data-name="${esc(c.name)}" data-id="${esc(c.id || "")}" data-phone="${esc(c.phone || "")}">
             <div class="chat-avatar">${esc((c.name || "?").charAt(0).toUpperCase())}</div>
             <div class="chat-info">
               <div class="chat-name">${esc(c.name)}</div>
-              <div class="chat-sub">${esc(sub)}</div>
+              <div class="chat-sub" style="font-family: monospace; color: #174b36; font-weight: 600;">${esc(sub)}</div>
             </div>
             <span class="chat-badge">${c.type === "group" ? "Grup" : "WA"}</span>
           </div>`;
@@ -596,12 +597,13 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
       if (!item) return;
       const type = item.dataset.type;
       const name = item.dataset.name;
+      const id = item.dataset.id;
       const phone = item.dataset.phone;
       setCoordTypeUI(type);
-      $("coordWa").value = type === "group" ? name : phone;
+      $("coordWa").value = (id && id.includes("@")) ? id : (type === "group" ? name : phone);
       $("chatPickerOverlay").style.display = "none";
       refreshPreview();
-      showMsg("Tujuan koordinasi dipilih ✓", true);
+      showMsg("Tujuan koordinasi dipilih (" + $("coordWa").value + ") ✓", true);
     });
 
     async function applyAuthAndUnlock(data) {

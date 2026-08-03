@@ -1262,6 +1262,49 @@ async function sendToGoogleSheets(data) {
   }
 }
 
+// Active SSE connections keyed by orderId
+const sseClients = {};
+
+app.get("/api/payment-stream", (req, res) => {
+  const { orderId } = req.query;
+  if (!orderId) return res.status(400).end();
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  if (res.flushHeaders) res.flushHeaders();
+
+  const order = ordersStore[orderId];
+  if (order && order.status === "PAID") {
+    res.write(`data: ${JSON.stringify({ paid: true, status: "PAID" })}\n\n`);
+  }
+
+  if (!sseClients[orderId]) {
+    sseClients[orderId] = [];
+  }
+  sseClients[orderId].push(res);
+
+  req.on("close", () => {
+    if (sseClients[orderId]) {
+      sseClients[orderId] = sseClients[orderId].filter((client) => client !== res);
+    }
+  });
+});
+
+function notifyPaymentSuccessSSE(orderId) {
+  const clients = sseClients[orderId];
+  if (clients && clients.length > 0) {
+    console.log(`⚡ [SSE Real-Time Push OK] Notifying ${clients.length} frontend browser client(s) for Order: ${orderId}`);
+    const payload = `data: ${JSON.stringify({ paid: true, status: "PAID" })}\n\n`;
+    clients.forEach((client) => {
+      try {
+        client.write(payload);
+      } catch (e) {}
+    });
+  }
+}
+
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -1344,6 +1387,7 @@ app.post("/api/midtrans-webhook", async (req, res) => {
       } else {
         ordersStore[orderId].status = "PAID";
       }
+      notifyPaymentSuccessSSE(orderId);
       const orderData = ordersStore[orderId];
 
       if (orderData && isWaReady) {
