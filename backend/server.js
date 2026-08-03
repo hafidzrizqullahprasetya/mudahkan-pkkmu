@@ -117,13 +117,10 @@ function saveSettings() {
 
 loadSettings();
 
-function buildCoordOrderText(orderData, paid) {
+function buildCoordOrderText(orderData) {
   const productListText = Array.isArray(orderData.products)
     ? orderData.products.join(", ")
     : orderData.products;
-  const statusLine = paid
-    ? "✅ Status: *SUDAH BAYAR (LUNAS)*"
-    : "⏳ Status: *MENUNGGU PEMBAYARAN*";
 
   return `📦 *PESANAN BARU MASUK*
 ────────────────
@@ -134,8 +131,7 @@ function buildCoordOrderText(orderData, paid) {
 📚 Program Studi: *${orderData.prodi || "-"}*
 📞 WA Pembeli: *${orderData.whatsapp || "-"}*
 🛍️ Produk: *${productListText || "-"}*
-💰 Total: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}*
-${statusLine}`;
+💰 Total: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}*`;
 }
 
 // Clean all stale Chromium locks before initializing.
@@ -263,8 +259,12 @@ async function resolveCoordTarget() {
   const targetStr = settings.coordWa.trim();
   const isDigitsOnly = /^\+?\d+$/.test(targetStr);
 
+  if (targetStr.includes("@")) {
+    return targetStr;
+  }
+
   if (settings.coordType === "group" || !isDigitsOnly) {
-    const nameLower = targetStr.toLowerCase();
+    const nameClean = targetStr.toLowerCase().replace(/[^a-z0-9]/g, "");
     try {
       let chats = await waClient.getChats().catch(() => []);
       if (!chats || chats.length === 0) {
@@ -272,20 +272,34 @@ async function resolveCoordTarget() {
       }
 
       for (const chat of chats) {
-        const chatName = (chat.name || chat.formattedTitle || "").toLowerCase();
+        const rawName = String(chat.name || chat.formattedTitle || chat.title || "");
+        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
         const chatId = chat.id ? (chat.id._serialized || chat.id) : "";
         const isGroup = Boolean(chat.isGroup || (chatId && String(chatId).endsWith("@g.us")) || chat.type === "group");
 
-        if (isGroup && (chatName === nameLower || chatName.includes(nameLower))) {
+        if (isGroup && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+          console.log(`🎯 [resolveCoordTarget OK] Group "${rawName}" -> JID: ${chatId}`);
           return String(chatId);
         }
       }
 
       const storeChats = await fetchChatsFromStore();
       for (const chat of storeChats) {
-        const chatName = (chat.name || "").toLowerCase();
-        if (chat.type === "group" && (chatName === nameLower || chatName.includes(nameLower))) {
+        const rawName = String(chat.name || "");
+        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (chat.type === "group" && (chatNameClean === nameClean || chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
+          console.log(`🎯 [resolveCoordTarget Store OK] Group "${rawName}" -> JID: ${chat.id}`);
           return String(chat.id);
+        }
+      }
+
+      for (const chat of chats) {
+        const rawName = String(chat.name || "");
+        const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const chatId = chat.id ? (chat.id._serialized || chat.id) : "";
+        if (chatNameClean.includes(nameClean)) {
+          console.log(`🎯 [resolveCoordTarget Fallback OK] Chat "${rawName}" -> JID: ${chatId}`);
+          return String(chatId);
         }
       }
     } catch (e) {
