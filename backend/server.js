@@ -1150,19 +1150,48 @@ async function fetchChatsFromStore() {
         }
       } catch (e) {}
 
-      // Fallback DOM #pane-side spans
+      // Extract real JID (@g.us / @c.us) from React Fiber on #pane-side chat rows
       try {
-        const spans = Array.from(document.querySelectorAll('#pane-side span[title]'));
-        for (const s of spans) {
-          const title = (s.getAttribute('title') || s.textContent || "").trim();
-          if (title && title.length >= 2 && !seen.has(title)) {
-            seen.add(title);
-            const isGroup = title.toLowerCase().includes("grup") || title.toLowerCase().includes("group") || title.toLowerCase().includes("pkk") || title.toLowerCase().includes("panitia") || title.toLowerCase().includes("founder");
+        const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"]'));
+        for (const row of rows) {
+          let name = "";
+          let jid = "";
+          const titleEl = row.querySelector('span[title]');
+          if (titleEl) {
+            name = (titleEl.getAttribute('title') || titleEl.textContent || "").trim();
+          }
+
+          for (const key in row) {
+            if (key.startsWith('__reactFiber') || key.startsWith('__reactProps')) {
+              let curr = row[key];
+              let depth = 0;
+              while (curr && depth < 10) {
+                const props = curr.memoizedProps;
+                if (props) {
+                  if (props.chat && props.chat.id) {
+                    jid = props.chat.id._serialized || String(props.chat.id);
+                    if (!name && props.chat.name) name = props.chat.name;
+                    break;
+                  }
+                  if (props.data && props.data.id) {
+                    jid = props.data.id._serialized || String(props.data.id);
+                    break;
+                  }
+                }
+                curr = curr.return || curr.child;
+                depth++;
+              }
+            }
+          }
+
+          if (name && !seen.has(name)) {
+            seen.add(name);
+            const isGroup = Boolean((jid && jid.endsWith("@g.us")) || name.toLowerCase().includes("grup") || name.toLowerCase().includes("group") || name.toLowerCase().includes("founder") || name.toLowerCase().includes("pkk"));
             list.push({
               type: isGroup ? "group" : "wa",
-              name: title,
-              phone: title,
-              id: title,
+              name: name,
+              phone: jid ? jid.replace(/@.*$/, "") : name,
+              id: jid || name,
             });
           }
         }
