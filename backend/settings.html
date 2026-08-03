@@ -312,6 +312,119 @@
       color: var(--ink);
     }
 
+    .btn--picker {
+      width: 100%;
+      margin-top: 10px;
+      font-size: 13px;
+      padding: 11px 14px;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(21, 23, 20, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 20px;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 500px;
+      max-height: 84vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .modal-head h3 {
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .modal-close {
+      border: 2px solid var(--ink);
+      background: var(--cream);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 900;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    #chatSearch { margin-bottom: 12px; }
+
+    .chat-list {
+      overflow-y: auto;
+      border: 2px solid var(--ink);
+      background: var(--cream);
+      flex: 1;
+      min-height: 140px;
+      max-height: 46vh;
+    }
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .chat-item:hover { background: #e9e6dc; }
+    .chat-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--green);
+      color: var(--cream);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name {
+      font-weight: 700;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-sub {
+      font-size: 12px;
+      color: #777;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-badge {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      background: var(--paper);
+      flex-shrink: 0;
+    }
+    .chat-list-empty {
+      padding: 24px;
+      text-align: center;
+      font-size: 13px;
+      color: #777;
+    }
+
     @media (max-width: 520px) {
       .mode-grid { grid-template-columns: 1fr; }
       .card { padding: 20px; }
@@ -368,6 +481,7 @@
           <div class="type-option" data-type="group">Nama Grup</div>
         </div>
         <input type="tel" id="coordWa" placeholder="Contoh: 081234567890" />
+        <button class="btn btn--light btn--picker" type="button" id="openChatPicker">Pilih dari Chat Bot ▾</button>
         <span class="input-hint" id="coordHint">Pesan pesanan masuk & status bayar akan dikirim ke nomor ini. Khusus koordinasi panitia.</span>
       </label>
 
@@ -385,6 +499,19 @@
       <div class="preview-box">
         <h3>Pratinjau Pesan Koordinasi</h3>
         <pre id="preview"></pre>
+      </div>
+    </div>
+
+    <!-- ===== PICKER CHAT ===== -->
+    <div class="overlay" id="chatPickerOverlay" style="display:none;">
+      <div class="card modal">
+        <div class="modal-head">
+          <h3>Pilih Tujuan Koordinasi</h3>
+          <button class="modal-close" id="chatPickerClose" type="button">✕</button>
+        </div>
+        <input type="text" id="chatSearch" placeholder="Cari nama / nomor / kode grup..." />
+        <div class="chat-list" id="chatList"><div class="chat-list-empty">Memuat daftar chat...</div></div>
+        <span class="input-hint" style="margin-top:10px;">Klik salah satu chat. Grup harus sudah pernah terlihat di bot (bot jadi anggotanya).</span>
       </div>
     </div>
 
@@ -484,6 +611,74 @@ Kirim ke: ${coordType === "group" ? "Grup: " + coordWa : coordWa}`;
         setModeUI(opt.dataset.mode);
         refreshPreview();
       });
+    });
+
+    // ===== Chat Picker =====
+    let chatCache = [];
+
+    function esc(s) {
+      return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderChatList() {
+      const term = $("chatSearch").value.trim().toLowerCase();
+      const filtered = chatCache.filter((c) =>
+        (c.name || "").toLowerCase().includes(term) ||
+        (c.phone || "").includes(term) ||
+        (c.inviteCode || "").toLowerCase().includes(term)
+      );
+      const el = $("chatList");
+      if (!filtered.length) {
+        el.innerHTML = '<div class="chat-list-empty">Tidak ada chat yang cocok.</div>';
+        return;
+      }
+      el.innerHTML = filtered.map((c) => {
+        const sub = c.type === "group"
+          ? (c.inviteCode ? "Grup • kode: " + c.inviteCode : "Grup WhatsApp")
+          : "WA • " + (c.phone || "");
+        return `
+          <div class="chat-item" data-type="${c.type}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || "")}">
+            <div class="chat-avatar">${esc((c.name || "?").charAt(0).toUpperCase())}</div>
+            <div class="chat-info">
+              <div class="chat-name">${esc(c.name)}</div>
+              <div class="chat-sub">${esc(sub)}</div>
+            </div>
+            <span class="chat-badge">${c.type === "group" ? "Grup" : "WA"}</span>
+          </div>`;
+      }).join("");
+    }
+
+    async function openChatPicker() {
+      const { ok, data } = await api("/api/chats?pin=" + encodeURIComponent(currentPin));
+      const el = $("chatList");
+      if (!ok) {
+        el.innerHTML = '<div class="chat-list-empty">' + esc(data.error || "Gagal memuat chat.") + '</div>';
+        return;
+      }
+      chatCache = data.chats || [];
+      $("chatSearch").value = "";
+      $("chatPickerOverlay").style.display = "flex";
+      renderChatList();
+    }
+
+    $("openChatPicker").addEventListener("click", openChatPicker);
+    $("chatSearch").addEventListener("input", renderChatList);
+    $("chatPickerClose").addEventListener("click", () => { $("chatPickerOverlay").style.display = "none"; });
+    $("chatPickerOverlay").addEventListener("click", (e) => {
+      if (e.target === $("chatPickerOverlay")) $("chatPickerOverlay").style.display = "none";
+    });
+
+    $("chatList").addEventListener("click", (e) => {
+      const item = e.target.closest(".chat-item");
+      if (!item) return;
+      const type = item.dataset.type;
+      const name = item.dataset.name;
+      const phone = item.dataset.phone;
+      setCoordTypeUI(type);
+      $("coordWa").value = type === "group" ? name : phone;
+      $("chatPickerOverlay").style.display = "none";
+      refreshPreview();
+      showMsg("Tujuan koordinasi dipilih ✓", true);
     });
 
     // Login

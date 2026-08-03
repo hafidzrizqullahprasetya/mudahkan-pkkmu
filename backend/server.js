@@ -404,6 +404,46 @@ app.post("/api/settings", (req, res) => {
   });
 });
 
+// Daftar chat yang ada di bot WhatsApp (untuk memilih tujuan koordinasi) — wajib PIN
+app.get("/api/chats", async (req, res) => {
+  const { pin } = req.query;
+  if (!settings.pin || pin !== settings.pin) {
+    return res.status(401).json({ error: "PIN salah." });
+  }
+  if (!isWaReady) {
+    return res.status(503).json({ error: "WhatsApp bot belum siap." });
+  }
+  try {
+    const chats = await waClient.getChats();
+    const list = [];
+    for (const chat of chats) {
+      const serialized = chat.id._serialized || "";
+      if (serialized.endsWith("@status@broadcast")) continue;
+      if (serialized.endsWith("@newsletter")) continue;
+      if (serialized.endsWith("@g.us")) {
+        list.push({
+          type: "group",
+          name: chat.name || chat.id.user || "Grup tanpa nama",
+          id: serialized,
+          inviteCode: chat.inviteCode || "",
+        });
+      } else if (serialized.endsWith("@c.us")) {
+        list.push({
+          type: "wa",
+          name: chat.name || chat.id.user || "Nomor tanpa nama",
+          phone: chat.id.user || "",
+          id: serialized,
+        });
+      }
+    }
+    list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    res.json({ chats: list, total: list.length });
+  } catch (err) {
+    console.error("Gagal mengambil daftar chat:", err);
+    res.status(500).json({ error: err.toString() });
+  }
+});
+
 // Endpoint untuk mengirim notifikasi awal pesanan ke WhatsApp
 app.post("/api/send-order-notif", async (req, res) => {
   try {
