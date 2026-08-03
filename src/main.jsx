@@ -170,6 +170,30 @@ const rupiah = (amount) => new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 }).format(amount);
 
+function IconFlame({ className = "svg-icon" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M12 23c-4.97 0-9-3.58-9-8 0-4.17 3.34-7.46 7.44-11.77.34-.36.95-.12.95.38 0 1.62.61 3.21 1.76 4.34 1.78-2.03 2.5-4.46 1.81-6.75-.12-.39.31-.72.65-.51C18.66 2.57 21 6.84 21 11c0 6.63-4.03 12-9 12zm0-2c3.87 0 7-4.48 7-9 0-2.81-1.39-5.91-3.14-8.08.15 2.1-.64 4.38-2.28 6.06A4.98 4.98 0 0 1 12 11.5c-1.38 0-2.5-1.12-2.5-2.5 0-.58.2-1.12.55-1.55C7.94 10.92 5 13.56 5 15c0 3.31 3.13 6 7 6z" />
+    </svg>
+  );
+}
+
+function IconSparkles({ className = "svg-icon" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M12 3l2.25 5.25L19.5 10.5l-5.25 2.25L12 18l-2.25-5.25L4.5 10.5l5.25-2.25L12 3zm6 12l1.125 2.625L21.75 18.75l-2.625 1.125L18 22.5l-1.125-2.625-2.625-1.125 2.625-1.125L18 15zm-12 0l1.125 2.625L9.75 18.75l-2.625 1.125L6 22.5l-1.125-2.625-2.625-1.125 2.625-1.125L6 15z" />
+    </svg>
+  );
+}
+
+function IconTag({ className = "svg-icon" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" />
+    </svg>
+  );
+}
+
 function ProductArt({ type }) {
   return (
     <div className={`product-art product-art--${type}`} aria-hidden="true">
@@ -782,21 +806,21 @@ function App() {
                 className={`tab-btn ${productTab === "all" ? "tab-btn--active" : ""}`}
                 onClick={() => setProductTab("all")}
               >
-                🔥 Semua ({products.length})
+                <IconFlame className="tab-icon" /> Semua ({products.length})
               </button>
               <button
                 type="button"
                 className={`tab-btn tab-btn--highlight ${productTab === "bundle" ? "tab-btn--active" : ""}`}
                 onClick={() => setProductTab("bundle")}
               >
-                ✨ Paket Hemat ({products.filter((p) => p.id.startsWith("paket-")).length})
+                <IconSparkles className="tab-icon" /> Paket Hemat ({products.filter((p) => p.id.startsWith("paket-")).length})
               </button>
               <button
                 type="button"
                 className={`tab-btn ${productTab === "single" ? "tab-btn--active" : ""}`}
                 onClick={() => setProductTab("single")}
               >
-                🪪 Eceran ({products.filter((p) => !p.id.startsWith("paket-")).length})
+                <IconTag className="tab-icon" /> Eceran ({products.filter((p) => !p.id.startsWith("paket-")).length})
               </button>
             </div>
 
@@ -815,7 +839,7 @@ function App() {
                       className={`product-check ${selected ? "product-check--active" : ""} ${isBestSeller ? "product-check--highlight" : ""}`}
                       key={product.id}
                     >
-                      {isBestSeller && <div className="product-best-badge">🔥 PALING LARIS</div>}
+                      {isBestSeller && <div className="product-best-badge"><IconFlame className="badge-icon" /> PALING LARIS</div>}
                       <input type="checkbox" name="products" value={product.id} checked={selected} onChange={() => toggleProduct(product.id)} />
                       <div className="product-check-content">
                         <div className="product-check-meta">{product.note}</div>

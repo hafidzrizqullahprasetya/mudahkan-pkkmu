@@ -238,10 +238,29 @@ main { overflow-x: clip; }
 .check-row b { color: var(--green); }
 .fieldset-help { margin: -12px 0 24px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .product-tab-filter { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.tab-btn { padding: 8px 14px; font: 800 12px "DM Sans"; text-transform: uppercase; letter-spacing: 0.05em; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; transition: all 0.15s ease; box-shadow: 2px 2px 0 var(--ink); }
-.tab-btn:hover { background: #eae8df; transform: translateY(-1px); }
-.tab-btn--active { background: var(--green); color: var(--paper); box-shadow: 3px 3px 0 var(--ink); }
-.tab-btn--highlight.tab-btn--active { background: var(--green-light); color: var(--ink); }
+.tab-btn {
+  padding: 8px 16px;
+  font: 800 12px "DM Sans";
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 2px solid var(--ink);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 3px 3px 0 var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-btn:hover { background: var(--green-light); color: var(--ink); transform: translateY(-1px); }
+.tab-btn--active {
+  background: var(--ink) !important;
+  color: var(--green-light) !important;
+  box-shadow: 4px 4px 0 var(--green) !important;
+  border-color: var(--ink) !important;
+}
+.tab-btn svg { fill: currentColor; flex: 0 0 auto; }
 
 .product-check-grid { display: flex; flex-direction: column; gap: 10px; border: none; }
 .product-check { position: relative; padding: 16px 20px; display: flex !important; flex-direction: row !important; align-items: center; justify-content: space-between; gap: 16px !important; background: #faf9f4; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); transition: transform .15s, box-shadow .15s, background-color .15s; text-align: left; }
@@ -249,7 +268,24 @@ main { overflow-x: clip; }
 .product-check--active { background: var(--green-light); border-color: var(--ink); }
 .product-check--active:hover { background: #c6d96d; }
 .product-check--highlight { border: 2.5px solid var(--green) !important; background: #fdfcee; }
-.product-best-badge { position: absolute; top: -11px; right: 14px; padding: 2px 8px; background: var(--ink); color: #f2c33a; border: 1.5px solid #f2c33a; font: 900 10px "Barlow Condensed"; letter-spacing: .08em; text-transform: uppercase; z-index: 2; box-shadow: 2px 2px 0 var(--ink); }
+.product-best-badge {
+  position: absolute;
+  top: -11px;
+  right: 14px;
+  padding: 3px 10px;
+  background: var(--ink);
+  color: #f2c33a;
+  border: 1.5px solid #f2c33a;
+  font: 900 11px "Barlow Condensed";
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  z-index: 2;
+  box-shadow: 2px 2px 0 var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.product-best-badge svg { fill: #f2c33a; }
 
 .product-check input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); cursor: pointer; flex: 0 0 auto; margin: 0; }
 .product-check-content { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
