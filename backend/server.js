@@ -1,4 +1,4 @@
-// Auto-deploy live test via Cloudflare Tunnel Webhook
+// Auto-deploy trigger test for Host mode binding
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
