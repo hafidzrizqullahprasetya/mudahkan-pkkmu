@@ -262,30 +262,31 @@ main { overflow-x: clip; }
 }
 .tab-btn svg { fill: currentColor; flex: 0 0 auto; }
 
-.product-check-grid { display: flex; flex-direction: column; gap: 10px; border: none; }
-.product-check { position: relative; padding: 16px 20px; display: flex !important; flex-direction: row !important; align-items: center; justify-content: space-between; gap: 16px !important; background: #faf9f4; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); transition: transform .15s, box-shadow .15s, background-color .15s; text-align: left; }
+.product-check-grid { display: flex; flex-direction: column; gap: 12px; border: none; }
+.product-check { position: relative; padding: 14px 18px; display: flex !important; flex-direction: row !important; align-items: center; justify-content: space-between; gap: 14px !important; background: #faf9f4; cursor: pointer; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); transition: transform .15s, box-shadow .15s, background-color .15s; text-align: left; }
 .product-check:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); background: #f4f2e6; }
-.product-check--active { background: var(--green-light); border-color: var(--ink); }
-.product-check--active:hover { background: #c6d96d; }
-.product-check--highlight { border: 2.5px solid var(--green) !important; background: #fdfcee; }
+.product-check--active { background: var(--green-light) !important; border-color: var(--ink) !important; }
+.product-check--active:hover { background: #c6d96d !important; }
+.product-check--highlight { border: 2.5px solid var(--green) !important; border-left: 7px solid var(--green) !important; background: #fbf9e6; box-shadow: 4px 4px 0 var(--green); }
+.product-check--highlight:hover { background: #f7f3d3; }
 .product-best-badge {
   position: absolute;
-  top: -11px;
-  right: 14px;
+  top: -12px;
+  right: 16px;
   padding: 3px 10px;
   background: var(--ink);
-  color: #f2c33a;
-  border: 1.5px solid #f2c33a;
+  color: var(--green-light);
+  border: 1.5px solid var(--green-light);
   font: 900 11px "Barlow Condensed";
   letter-spacing: .08em;
   text-transform: uppercase;
   z-index: 2;
-  box-shadow: 2px 2px 0 var(--ink);
+  box-shadow: 2px 2px 0 var(--green);
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
-.product-best-badge svg { fill: #f2c33a; }
+.product-best-badge svg { fill: var(--green-light); }
 
 .product-check input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); cursor: pointer; flex: 0 0 auto; margin: 0; }
 .product-check-content { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }

@@ -844,7 +844,6 @@ function App() {
                       <div className="product-check-content">
                         <div className="product-check-meta">{product.note}</div>
                         <div className="product-check-title">{product.name}</div>
-                        <div className="product-check-desc">{product.description}</div>
                       </div>
                       <div className="product-check-right">
                         <div className="product-check-price">{rupiah(product.price)}</div>
