@@ -260,6 +260,30 @@ footer > strong i { color: var(--green-light); font-style: normal; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(15,17,14,.82); }
 .success-modal { width: min(540px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 34px; color: var(--ink); background: var(--green-light); border: 8px solid var(--paper); outline: 2px solid var(--ink); box-shadow: 16px 16px 0 var(--green); }
+.qris-modal-card { width: min(520px, 100%); background: #faf9f4; border: 4px solid var(--ink); box-shadow: 12px 12px 0 var(--green); padding: 24px; color: var(--ink); }
+.qris-modal-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.qris-badge-tag { padding: 5px 10px; color: var(--paper); background: var(--green); font: 800 11px "DM Sans"; letter-spacing: .08em; text-transform: uppercase; }
+.qris-timer-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.timer-label { color: var(--muted); }
+.timer-digits { font: 900 18px "Barlow Condensed"; color: var(--green); letter-spacing: .05em; padding: 2px 8px; background: rgba(23,75,54,.08); border: 1.5px solid var(--green); }
+.timer-digits--warning { color: #a32e24; border-color: #a32e24; background: #fdf5f5; }
+.qris-card-body { display: flex; flex-direction: column; align-items: center; gap: 16px; background: #ffffff; padding: 20px; border: 2px solid var(--ink); margin-bottom: 20px; text-align: center; }
+.qris-header-row { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.qris-brand-logo { height: 32px; object-fit: contain; }
+.qris-merchant-title { font: 800 11px "DM Sans"; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+.qris-qr-wrapper { width: 230px; height: 230px; display: grid; place-items: center; padding: 10px; background: #ffffff; border: 2.5px solid var(--ink); margin: 6px 0; }
+.qris-qr-code { width: 100%; height: 100%; object-fit: contain; }
+.qris-expired-notice { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #a32e24; }
+.expired-icon { font-size: 32px; }
+.qris-expired-notice strong { font: 800 18px "Barlow Condensed"; }
+.qris-expired-notice small { font-size: 12px; color: var(--muted); }
+.qris-amount-row { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--green-light); border: 1.5px solid var(--ink); margin-top: 4px; }
+.qris-amount-row span { font-weight: 700; font-size: 13px; text-transform: uppercase; }
+.qris-amount-row strong { font: 900 24px "Barlow Condensed"; color: var(--ink); }
+.qris-order-details { width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 12px; text-align: left; padding-top: 6px; border-top: 1px dashed #ccc; }
+.order-detail-line { display: flex; justify-content: space-between; color: #444; }
+.order-detail-line b { color: var(--ink); font-weight: 700; }
+.qris-scan-help { font-size: 13px; color: var(--muted); margin: 0 0 14px; text-align: center; line-height: 1.4; }
 .success-number { display: inline-block; padding: 6px 9px; color: var(--paper); background: var(--green); font: 800 12px "DM Sans"; }
 .success-modal h2 { margin: 22px 0; font: 900 clamp(48px, 7.5vw, 70px)/.86 "Barlow Condensed"; letter-spacing: .015em; text-transform: uppercase; }
 .success-modal p { max-width: 430px; font-size: 16px; line-height: 1.65; }
