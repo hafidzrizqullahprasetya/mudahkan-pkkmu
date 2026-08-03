@@ -19,6 +19,13 @@ const WA_GROUP_LINK = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
+process.on("unhandledRejection", (reason, p) => {
+  console.error("⚠️ Unhandled Rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("⚠️ Uncaught Exception:", err);
+});
+
 // Store orders in memory to link orderId -> customer info
 const ordersStore = {};
 let latestQrImage = "";
@@ -148,6 +155,7 @@ function createWaClient() {
     authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
     puppeteer: {
       headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
