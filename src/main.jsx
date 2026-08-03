@@ -421,6 +421,7 @@ function CustomPkkbnSelect({ scopes, value, onChange, error }) {
 }
 
 const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzw8Dj11JHnSGzLOQm7rB3uoJ85LVtYxh9S5GKeAvnweiPHh0lKl6Fo1V3C8KtGzOgfEw/exec";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
 
 const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
@@ -511,6 +512,14 @@ function App() {
           products: selectedItems.map((item) => item.name),
           total: total,
         };
+
+        if (BACKEND_URL) {
+          fetch(`${BACKEND_URL}/api/send-order-notif`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }).catch((e) => console.log("WA notification error:", e));
+        }
 
         if (GOOGLE_SCRIPT_URL) {
           const res = await fetch(GOOGLE_SCRIPT_URL, {
