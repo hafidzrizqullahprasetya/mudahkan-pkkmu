@@ -1,640 +1,54 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 import logoImg from "../logo/mudahkan-atributmu.jpg";
 import qrisLogo from "../logo/qris.svg";
 import heroImg from "../image/kampus-upn.jpg";
-import imgPusat from "../kumpulan-pkkbn/pkkbn_upnvyk.jpg";
-import imgFeb from "../kumpulan-pkkbn/pkkbn_feb.jpg";
-import imgFisip from "../kumpulan-pkkbn/pkkbn_fisip.jpg";
-import imgFti from "../kumpulan-pkkbn/pkkbn_garuda_fti.jpg";
-import imgFp from "../kumpulan-pkkbn/pkkbn_fp.jpg";
-import imgFtme from "../kumpulan-pkkbn/pkkbn_ftme.jpg";
 
-const instagramUrl = "https://www.instagram.com/mudahkan.pkkmu/";
-
-const products = [
-  {
-    id: "lanyard",
-    number: "01",
-    name: "Lanyard",
-    price: 8000,
-    note: "Identitas harian",
-    description: "Tali identitas bercorak hijau veteran dengan pengait kuat.",
-    icon: "🪪",
-  },
-  {
-    id: "cocard",
-    number: "02",
-    name: "Cocard",
-    price: 10000,
-    note: "Wajib ospek",
-    description: "Kartu identitas peserta dengan ruang nama dan kelompok.",
-    icon: "📋",
-  },
-  {
-    id: "booklet",
-    number: "03",
-    name: "Booklet",
-    price: 25000,
-    note: "Panduan kegiatan",
-    description: "Panduan ringkas agenda, denah, dan catatan kegiatan.",
-    icon: "📖",
-  },
-  {
-    id: "paket-lc",
-    number: "04",
-    name: "Paket Starter (Lanyard + Cocard)",
-    price: 15000,
-    note: "Hemat 3K",
-    description: "Paket hemat identitas ospek: Tali lanyard bercorak veteran + Kartu kokard peserta.",
-    icon: "✨",
-  },
-  {
-    id: "paket-lb",
-    number: "05",
-    name: "Paket Eko (Lanyard + Booklet)",
-    price: 30000,
-    note: "Hemat 3K",
-    description: "Tali lanyard bercorak hijau veteran + Buku panduan agenda kegiatan PKKBN.",
-    icon: "📚",
-  },
-  {
-    id: "paket-cb",
-    number: "06",
-    name: "Paket Duo (Cocard + Booklet)",
-    price: 32000,
-    note: "Hemat 3K",
-    description: "Kartu kokard identitas peserta + Buku panduan agenda kegiatan PKKBN lengkap.",
-    icon: "📝",
-  },
-  {
-    id: "paket-lengkap",
-    number: "07",
-    name: "Paket Lengkap (Lanyard + Cocard + Booklet)",
-    price: 38000,
-    note: "Paling Laris (Hemat 5K)",
-    description: "Set komplit seluruh atribut ospek: Lanyard, Cocard, dan Booklet PKKBN UPNVY.",
-    icon: "🔥",
-  },
-];
-
-// Komponen dasar yang terkandung dalam tiap produk, untuk mencegah pesanan duplikat/bentrok.
-const productItems = {
-  lanyard: ["lanyard"],
-  cocard: ["cocard"],
-  booklet: ["booklet"],
-  "paket-lc": ["lanyard", "cocard"],
-  "paket-lb": ["lanyard", "booklet"],
-  "paket-cb": ["cocard", "booklet"],
-  "paket-lengkap": ["lanyard", "cocard", "booklet"],
-};
-
-const BEST_SELLER_IDS = ["paket-lengkap", "paket-lc"];
-
-// Normalisasi pilihan: ubah eceran yang setara paket menjadi paket hemat secara otomatis.
-// Prioritas paling besar dulu (paket-lengkap), lalu pasangan.
-const BUNDLE_RECIPES = [
-  { bundle: "paket-lengkap", singles: ["lanyard", "cocard", "booklet"] },
-  { bundle: "paket-lc", singles: ["lanyard", "cocard"] },
-  { bundle: "paket-lb", singles: ["lanyard", "booklet"] },
-  { bundle: "paket-cb", singles: ["cocard", "booklet"] },
-];
-
-const normalizeSelection = (ids) => {
-  const singletonIds = ["lanyard", "cocard", "booklet"];
-  const keep = ids.filter((id) => !singletonIds.includes(id));
-  const pool = new Set(ids.filter((id) => singletonIds.includes(id)));
-
-  BUNDLE_RECIPES.forEach(({ bundle, singles }) => {
-    if (singles.every((single) => pool.has(single))) {
-      keep.push(bundle);
-      singles.forEach((single) => pool.delete(single));
-    }
-  });
-
-  pool.forEach((single) => keep.push(single));
-  return keep;
-};
-
-const sortedProducts = (list) =>
-  [...list].sort((a, b) => {
-    const rankA = BEST_SELLER_IDS.indexOf(a.id);
-    const rankB = BEST_SELLER_IDS.indexOf(b.id);
-    if (rankA === -1 && rankB === -1) return 0;
-    if (rankA === -1) return 1;
-    if (rankB === -1) return -1;
-    return rankA - rankB;
-  });
-
-const pkkbnScopes = [
-  {
-    id: "feb",
-    name: "PKKBN FEB",
-    type: "Fakultas Ekonomi & Bisnis",
-    code: "FEB",
-    image: imgFeb,
-    instagramUrl: instagramUrl,
-    description: "Atribut khusus kegiatan pengenalan kampus Fakultas Ekonomi dan Bisnis.",
-    prodis: ["Manajemen", "Akuntansi", "Ekonomi Pembangunan"],
-  },
-  {
-    id: "fisip",
-    name: "PKKBN FISIP",
-    type: "Fakultas Ilmu Sosial & Ilmu Politik",
-    code: "FISIP",
-    image: imgFisip,
-    instagramUrl: instagramUrl,
-    description: "Kelengkapan atribut identitas mahasiswa baru FISIP UPN Veteran Yogyakarta.",
-    prodis: [
-      "Ilmu Komunikasi",
-      "Ilmu Administrasi Bisnis",
-      "Hubungan Internasional",
-      "Hubungan Masyarakat",
-    ],
-  },
-  {
-    id: "fti",
-    name: "PKKBN FTI (Garuda)",
-    type: "Fakultas Teknologi Industri",
-    code: "FTI",
-    image: imgFti,
-    instagramUrl: instagramUrl,
-    description: "Paket atribut ospek FTI Garuda untuk calon keteknikan dan industri.",
-    prodis: ["Teknik Industri", "S1 Teknik Kimia", "Informatika", "Sistem Informasi", "D3 Teknik Kimia"],
-  },
-  {
-    id: "ftme",
-    name: "PKKBN FTME",
-    type: "Fakultas Teknologi Mineral & Energi",
-    code: "FTME",
-    image: imgFtme,
-    instagramUrl: instagramUrl,
-    description: "Kelengkapan atribut ospek Fakultas Teknologi Mineral dan Energi.",
-    prodis: [
-      "Teknik Geologi",
-      "Teknik Pertambangan",
-      "Teknik Perminyakan",
-      "Teknik Lingkungan",
-      "Teknik Geofisika",
-      "Teknik Geomatika",
-      "Teknik Metalurgi",
-    ],
-  },
-  {
-    id: "fp",
-    name: "PKKBN FP",
-    type: "Fakultas Pertanian",
-    code: "FP",
-    image: imgFp,
-    instagramUrl: instagramUrl,
-    description: "Atribut kegiatan PKKBN untuk mahasiswa baru Fakultas Pertanian.",
-    prodis: ["Agroteknologi", "Agribisnis", "Ilmu Tanah"],
-  },
-];
-
-const whatsappGroupUrl = "https://chat.whatsapp.com/IARvfdegaWUEUwiJ42roiN?s=cl&p=i&ilr=2";
-
-const rupiah = (amount) => new Intl.NumberFormat("id-ID", {
-  style: "currency",
-  currency: "IDR",
-  maximumFractionDigits: 0,
-}).format(amount);
-
-function IconFlame({ className = "svg-icon" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-      <path d="M12 23c-4.97 0-9-3.58-9-8 0-4.17 3.34-7.46 7.44-11.77.34-.36.95-.12.95.38 0 1.62.61 3.21 1.76 4.34 1.78-2.03 2.5-4.46 1.81-6.75-.12-.39.31-.72.65-.51C18.66 2.57 21 6.84 21 11c0 6.63-4.03 12-9 12zm0-2c3.87 0 7-4.48 7-9 0-2.81-1.39-5.91-3.14-8.08.15 2.1-.64 4.38-2.28 6.06A4.98 4.98 0 0 1 12 11.5c-1.38 0-2.5-1.12-2.5-2.5 0-.58.2-1.12.55-1.55C7.94 10.92 5 13.56 5 15c0 3.31 3.13 6 7 6z" />
-    </svg>
-  );
-}
-
-function IconSparkles({ className = "svg-icon" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-      <path d="M12 3l2.25 5.25L19.5 10.5l-5.25 2.25L12 18l-2.25-5.25L4.5 10.5l5.25-2.25L12 3zm6 12l1.125 2.625L21.75 18.75l-2.625 1.125L18 22.5l-1.125-2.625-2.625-1.125 2.625-1.125L18 15zm-12 0l1.125 2.625L9.75 18.75l-2.625 1.125L6 22.5l-1.125-2.625-2.625-1.125 2.625-1.125L6 15z" />
-    </svg>
-  );
-}
-
-function IconTag({ className = "svg-icon" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-      <path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" />
-    </svg>
-  );
-}
-
-function IconCamera(props) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0-2-2h-3l-2.5-3z"/>
-      <circle cx="12" cy="13" r="3"/>
-    </svg>
-  );
-}
-
-function IconFolderUpload(props) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"/>
-      <path d="M12 10v6m-3-3l3-3 3 3"/>
-    </svg>
-  );
-}
-
-function ProductArt({ type }) {
-  return (
-    <div className={`product-art product-art--${type}`} aria-hidden="true">
-      <span className="art-stamp">UPN</span>
-      <span className="art-year">2026</span>
-      <div className="art-object">
-        {type === "lanyard" && <><i>UPNVY • VETERAN • UPNVY</i><b>V</b></>}
-        {type === "cocard" && <><small>PESERTA</small><b>V</b><em>NAMA / KELOMPOK</em></>}
-        {type === "booklet" && <><small>BUKU PANDUAN</small><b>26</b><em>PKKBN UPNVY</em></>}
-        {type === "paket-lc" && <><small>PAKET STARTER</small><b>15K</b><em>LANYARD + COCARD</em></>}
-        {type === "paket-lb" && <><small>PAKET EKO</small><b>30K</b><em>LANYARD + BOOKLET</em></>}
-        {type === "paket-cb" && <><small>PAKET DUO</small><b>32K</b><em>COCARD + BOOKLET</em></>}
-        {type === "paket-lengkap" && <><small>PAKET LENGKAP</small><b>38K</b><em>SET KOMPLIT PKKBN</em></>}
-      </div>
-      <span className="art-caption">BELA NEGARA</span>
-    </div>
-  );
-}
-
-function CustomProdiSelect({ options, value, onChange, error, hasFaculty }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef(null);
-  const menuRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSearchTerm("");
-      const pad = 24;
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-        menuRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        requestAnimationFrame(() => {
-          const rect = menuRef.current?.getBoundingClientRect();
-          if (rect) {
-            const overflow = rect.bottom - (window.innerHeight - pad);
-            if (overflow > 0) {
-              window.scrollBy({ top: overflow, behavior: "smooth" });
-            }
-          }
-        });
-      }, 50);
-    }
-  }, [isOpen]);
-
-  const filteredOptions = options.filter((item) => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true;
-    return item.toLowerCase().includes(term);
-  });
-
-  const handleSelectOption = (item) => {
-    onChange(item);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className={`custom-select-wrapper ${isOpen ? "custom-select-wrapper--open" : ""}`} ref={dropdownRef}>
-      <input type="hidden" name="prodi" value={value} />
-      <button
-        type="button"
-        disabled={!hasFaculty}
-        className={`custom-select-trigger ${isOpen ? "custom-select-trigger--open" : ""} ${error ? "custom-select-trigger--error" : ""}`}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        {value ? (
-          <div className="custom-select-selected">
-            <span className="select-text"><b>{value}</b></span>
-          </div>
-        ) : (
-          <span className="select-placeholder">{hasFaculty ? "-- Pilih Program Studi --" : "-- Pilih Fakultas terlebih dahulu --"}</span>
-        )}
-        <span className="select-arrow">{isOpen ? "▲" : "▼"}</span>
-      </button>
-
-      {isOpen && (
-        <div className="custom-select-menu" role="listbox" ref={menuRef}>
-          <div className="custom-select-search-box">
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="custom-select-search-input"
-              placeholder="Cari program studi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          <div className="custom-select-options-list">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((item) => {
-                const isSelected = item === value;
-                return (
-                  <div
-                    key={item}
-                    role="option"
-                    aria-selected={isSelected}
-                    className={`custom-select-option ${isSelected ? "custom-select-option--selected" : ""}`}
-                    onClick={() => handleSelectOption(item)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleSelectOption(item);
-                    }}
-                  >
-                    <div className="option-info">
-                      <strong>{item}</strong>
-                    </div>
-                    {isSelected && <span className="option-check">✓</span>}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="custom-select-empty">
-                {hasFaculty ? `Tidak ada program studi yang cocok dengan "${searchTerm}"` : "Pilih PKKBN Fakultas terlebih dahulu untuk melihat program studi."}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PhotoUploadInput({ error, onChange }) {
-  const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const handleFileChange = (e) => {
-    const selected = e.target.files?.[0];
-    if (selected) {
-      setFile(selected);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(selected));
-      if (onChange) onChange(selected);
-    }
-  };
-
-  const handleReupload = () => {
-    fileInputRef.current?.click();
-  };
-
-  return (
-    <div className={`photo-upload-wrapper ${error ? "photo-upload-wrapper--error" : ""}`}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        name="photo"
-        accept="image/*"
-        onChange={handleFileChange}
-        style={{ display: "none" }}
-      />
-      {previewUrl ? (
-        <div className="photo-preview-card">
-          <div className="photo-preview-frame">
-            <img src={previewUrl} alt="Preview pas foto 3x4" />
-            <span className="photo-ratio-badge">3x4</span>
-          </div>
-          <div className="photo-preview-info">
-            <div className="photo-filename">{file?.name}</div>
-            <div className="photo-filesize">
-              {file?.size ? (file.size / (1024 * 1024)).toFixed(2) + " MB" : ""}
-            </div>
-            <button
-              type="button"
-              className="photo-reupload-btn"
-              onClick={handleReupload}
-            >
-              <IconCamera style={{ marginRight: "6px", verticalAlign: "middle" }} /> Ganti foto / Upload ulang
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="photo-upload-trigger"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <span className="upload-icon"><IconFolderUpload /></span>
-          <div className="upload-text">
-            <strong>Pilih Pas Foto 3x4</strong>
-            <small>Format JPG, PNG, atau WEBP (Maksimal 1 foto)</small>
-          </div>
-        </button>
-      )}
-    </div>
-  );
-}
-
-function CustomPkkbnSelect({ scopes, value, onChange, error }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef(null);
-  const menuRef = useRef(null);
-  const searchInputRef = useRef(null);
-
-  const selectedScope = scopes.find((s) => s.name === value);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSearchTerm("");
-      const pad = 24;
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-        menuRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        requestAnimationFrame(() => {
-          const rect = menuRef.current?.getBoundingClientRect();
-          if (rect) {
-            const overflow = rect.bottom - (window.innerHeight - pad);
-            if (overflow > 0) {
-              window.scrollBy({ top: overflow, behavior: "smooth" });
-            }
-          }
-        });
-      }, 50);
-    }
-  }, [isOpen]);
-
-  const filteredScopes = scopes.filter((scope) => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true;
-    return (
-      scope.name.toLowerCase().includes(term) ||
-      scope.code.toLowerCase().includes(term) ||
-      scope.type.toLowerCase().includes(term)
-    );
-  });
-
-  const handleSelectScope = (scopeName) => {
-    onChange(scopeName);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className={`custom-select-wrapper ${isOpen ? "custom-select-wrapper--open" : ""}`} ref={dropdownRef}>
-      <input type="hidden" name="faculty" value={value} />
-      <button
-        type="button"
-        className={`custom-select-trigger ${isOpen ? "custom-select-trigger--open" : ""} ${error ? "custom-select-trigger--error" : ""}`}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        {selectedScope ? (
-          <div className="custom-select-selected">
-            <span className="select-badge">{selectedScope.code}</span>
-            <span className="select-text"><b>{selectedScope.name}</b><small className="select-type-small"> • {selectedScope.type}</small></span>
-          </div>
-        ) : (
-          <span className="select-placeholder">-- Pilih Lini PKKBN Fakultas --</span>
-        )}
-        <span className="select-arrow">{isOpen ? "▲" : "▼"}</span>
-      </button>
-
-      {isOpen && (
-        <div className="custom-select-menu" role="listbox" ref={menuRef}>
-          <div className="custom-select-search-box">
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="custom-select-search-input"
-              placeholder="Cari PKKBN atau fakultas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          <div className="custom-select-options-list">
-            {filteredScopes.length > 0 ? (
-              filteredScopes.map((scope) => {
-                const isSelected = scope.name === value;
-                return (
-                  <div
-                    key={scope.id}
-                    role="option"
-                    aria-selected={isSelected}
-                    className={`custom-select-option ${isSelected ? "custom-select-option--selected" : ""}`}
-                    onClick={() => handleSelectScope(scope.name)}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      handleSelectScope(scope.name);
-                    }}
-                  >
-                    <span className="option-badge">{scope.code}</span>
-                    <div className="option-info">
-                      <strong>{scope.name}</strong>
-                      <small>{scope.type}</small>
-                    </div>
-                    {isSelected && <span className="option-check">✓</span>}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="custom-select-empty">
-                Tidak ada PKKBN yang cocok dengan "{searchTerm}"
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-const GOOGLE_SCRIPT_URL = import.meta.env.VITE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbw50zEWkCzBo4qf-8h3mdgddkqF5wAgrN5V17IaEdVyI47yrWWxyIXTCKf5UVHDzCU5Qg/exec";
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://notif-pkk.pempekasliwongkito.my.id";
-
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
-};
+import {
+  instagramUrl,
+  whatsappGroupUrl,
+  products,
+  productItems,
+  BEST_SELLER_IDS,
+  COCARD_PRODUCT_IDS,
+  pkkbnScopes,
+} from "./constants";
+import { IconFlame, IconSparkles, IconTag, ProductArt } from "./components/Icons";
+import { CustomProdiSelect } from "./components/CustomProdiSelect";
+import { PhotoUploadInput } from "./components/PhotoUploadInput";
+import { CustomPkkbnSelect } from "./components/CustomPkkbnSelect";
+import { rupiah } from "./utils/format";
+import { normalizeSelection, sortedProducts } from "./utils/products";
+import { crc16ccitt, buildQrisFallback } from "./utils/qris";
+import { BACKEND_URL, fileToBase64 } from "./utils/api";
 
 function App() {
-  const [formData, setFormData] = useState(() => {
+  // Parse draft sekali, share ke semua useState initializer
+  // ponytail: add when draft structure kompleks — pertimbangkan useReducer
+  const draft = (() => {
     try {
       const saved = localStorage.getItem("pkkbn_order_draft");
-      return saved ? JSON.parse(saved) : { name: "", nim: "", whatsapp: "" };
+      return saved ? JSON.parse(saved) : null;
     } catch (e) {
-      return { name: "", nim: "", whatsapp: "" };
+      return null;
     }
-  });
+  })();
 
-  const [selectedProducts, setSelectedProducts] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pkkbn_order_draft");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.selectedProducts)) return parsed.selectedProducts;
-      }
-    } catch (e) {}
-    return [];
-  });
+  const [formData, setFormData] = useState(
+    draft ? { name: draft.name || "", nim: draft.nim || "", whatsapp: draft.whatsapp || "" } : { name: "", nim: "", whatsapp: "" }
+  );
 
-  const [selectedProdi, setSelectedProdi] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pkkbn_order_draft");
-      if (saved) return JSON.parse(saved).prodi || "";
-    } catch (e) {}
-    return "";
-  });
+  const [selectedProducts, setSelectedProducts] = useState(
+    draft && Array.isArray(draft.selectedProducts) ? draft.selectedProducts : []
+  );
 
-  const [selectedFaculty, setSelectedFaculty] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pkkbn_order_draft");
-      if (saved) return JSON.parse(saved).faculty || "";
-    } catch (e) {}
-    return "";
-  });
+  const [selectedProdi, setSelectedProdi] = useState(draft?.prodi || "");
 
-  const [cocardOption, setCocardOption] = useState(() => {
-    try {
-      const saved = localStorage.getItem("pkkbn_order_draft");
-      if (saved) return JSON.parse(saved).cocardOption || "both";
-    } catch (e) {}
-    return "both";
-  });
+  const [selectedFaculty, setSelectedFaculty] = useState(draft?.faculty || "");
+
+  const [cocardOption, setCocardOption] = useState(draft?.cocardOption || "both");
 
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -708,14 +122,19 @@ function App() {
     } catch (e) {}
   }, [formData, selectedFaculty, selectedProdi, selectedProducts, cocardOption]);
 
-  const selectedItems = products.filter((product) => selectedProducts.includes(product.id));
-  const total = selectedItems.reduce((sum, product) => sum + product.price, 0);
+  // ponytail: normalizeSelection dipanggil di sini, bukan di toggleProduct, biar derivasi murni
+  const normalizedProductIds = useMemo(() => normalizeSelection(selectedProducts), [selectedProducts]);
+  const selectedItems = useMemo(
+    () => products.filter((product) => normalizedProductIds.includes(product.id)),
+    [normalizedProductIds]
+  );
+  const total = useMemo(() => selectedItems.reduce((sum, product) => sum + product.price, 0), [selectedItems]);
 
   const selectedScope = pkkbnScopes.find((s) => s.name === selectedFaculty) || null;
   const availableProdis = selectedScope?.prodis || [];
-  const hasCocardProduct = selectedProducts.some((id) =>
-    ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
-  );
+  const hasCocardProduct = normalizedProductIds.some((id) => COCARD_PRODUCT_IDS.includes(id));
+  // sortedProducts dipanggil 2x di render (package-grid + product-check) — hitung sekali
+  const sortedProductList = useMemo(() => sortedProducts(products), []);
 
   const handleFacultyChange = (val) => {
     setSelectedFaculty(val);
@@ -783,7 +202,6 @@ function App() {
     setSelectedProdi("");
     setSelectedProducts([]);
     setCocardOption("both");
-    setPhotoPreview("");
     setErrors({});
     try {
       localStorage.removeItem("pkkbn_order_draft");
@@ -802,10 +220,6 @@ function App() {
     const data = new FormData(event.currentTarget);
     const nextErrors = {};
 
-    const hasCocard = selectedProducts.some((id) =>
-      ["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(id)
-    );
-
     ["name", "nim", "faculty", "whatsapp"].forEach((field) => {
       if (!data.get(field)?.trim()) nextErrors[field] = "Bagian ini wajib diisi.";
     });
@@ -813,7 +227,7 @@ function App() {
       nextErrors.prodi = "Bagian ini wajib diisi.";
     }
     const photoFile = data.get("photo");
-    if (hasCocard && (!photoFile || !photoFile.name || photoFile.size === 0)) {
+    if (hasCocardProduct && (!photoFile || !photoFile.name || photoFile.size === 0)) {
       nextErrors.photo = "Pas foto 3x4 wajib diunggah untuk Cocard.";
     }
     if (selectedProducts.length === 0) nextErrors.products = "Pilih minimal satu produk.";
@@ -828,7 +242,7 @@ function App() {
         if (photoFile && photoFile.size > 0) {
           photoBase64 = await fileToBase64(photoFile);
         }
-        const cocardVariantNote = hasCocard
+        const cocardVariantNote = hasCocardProduct
           ? cocardOption === "both"
             ? "(Cocard: Pusat + Fakultas)"
             : cocardOption === "pusat"
@@ -837,7 +251,7 @@ function App() {
           : "";
 
         const formattedProducts = selectedItems.map((item) => {
-          if (["cocard", "paket-lc", "paket-cb", "paket-lengkap"].includes(item.id)) {
+          if (COCARD_PRODUCT_IDS.includes(item.id)) {
             return `${item.name} ${cocardVariantNote}`;
           }
           return item.name;
@@ -859,6 +273,8 @@ function App() {
 
         const chargeTotal = payMode === "testing" ? 1 : total;
 
+        // Simpan ke Google Sheets/Drive dilakukan oleh backend di /api/send-order-notif
+        // (sendToGoogleSheets). Kirim langsung dari browser dulu duplikat baris di Sheets.
         if (BACKEND_URL) {
           fetch(`${BACKEND_URL}/api/send-order-notif`, {
             method: "POST",
@@ -867,23 +283,14 @@ function App() {
           }).catch((e) => console.log("WA notification error:", e));
         }
 
-        // Always save to Google Sheets & Google Drive
-        if (GOOGLE_SCRIPT_URL) {
-          fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ ...payload, total: chargeTotal }),
-          }).catch((e) => console.log("Google Sheets save error:", e));
-        }
-
         let qrisDirect = null;
         if (BACKEND_URL) {
           try {
             const qrisRes = await fetch(`${BACKEND_URL}/api/charge-qris`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orderId: generatedOrderId, amount: total }),
+              // productIds dikirim, bukan amount — total dihitung server-side (anti-fraud)
+              body: JSON.stringify({ orderId: generatedOrderId, productIds: normalizedProductIds }),
             });
             if (qrisRes.ok) {
               qrisDirect = await qrisRes.json();
@@ -897,7 +304,7 @@ function App() {
           setPaymentData(qrisDirect);
         } else {
           setPaymentData({
-            qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
+            qr_url: buildQrisFallback(chargeTotal),
             order_id: generatedOrderId,
             gross_amount: chargeTotal,
           });
@@ -906,7 +313,7 @@ function App() {
         console.error("Gagal mengirim data ke Backend:", err);
         const chargeTotal = payMode === "testing" ? 1 : total;
         setPaymentData({
-          qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=00020101021226680016ID.CO.MIDTRANS.WWW0118936000140000017857520215G501573755530336054002150000${chargeTotal}`,
+          qr_url: buildQrisFallback(chargeTotal),
           order_id: generatedOrderId,
           gross_amount: chargeTotal,
         });
@@ -985,7 +392,7 @@ function App() {
           <div><h2>Pilih atributmu.</h2><p>Klik produk untuk langsung menuju ke formulir pemesanan.</p></div>
         </div>
         <div className="package-grid">
-          {sortedProducts(products).map((product) => {
+          {sortedProductList.map((product) => {
             return (
               <button
                 type="button"
@@ -1074,7 +481,7 @@ function App() {
               <label><span>Pilihan PKKBN Fakultas <span className="required-asterisk">*</span></span><CustomPkkbnSelect scopes={pkkbnScopes} value={selectedFaculty} onChange={handleFacultyChange} error={Boolean(errors.faculty)} />{errors.faculty && <small className="error">{errors.faculty}</small>}</label>
               <label><span>Program Studi <span className="required-asterisk">*</span></span><CustomProdiSelect options={availableProdis} value={selectedProdi} onChange={(val) => { setSelectedProdi(val); setErrors((curr) => ({ ...curr, prodi: undefined })); }} error={Boolean(errors.prodi)} hasFaculty={Boolean(selectedFaculty)} />{errors.prodi && <small className="error">{errors.prodi}</small>}</label>
               <label className="full-width"><span>Nomor WhatsApp <span className="required-asterisk">*</span></span><input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="Contoh: 081234567890" value={formData.whatsapp} onChange={(e) => { setFormData((prev) => ({ ...prev, whatsapp: e.target.value })); setErrors((curr) => ({ ...curr, whatsapp: undefined })); }} aria-invalid={Boolean(errors.whatsapp)} />{errors.whatsapp && <small className="error">{errors.whatsapp}</small>}</label>
-              <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) {hasCocardProduct && <span className="required-asterisk">*</span>}</span><PhotoUploadInput required={hasCocardProduct} error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
+              <label className="full-width"><span>Pas foto 3x4 (keperluan Cocard) {hasCocardProduct && <span className="required-asterisk">*</span>}</span><PhotoUploadInput key={`photo-${submitted}`} required={hasCocardProduct} error={Boolean(errors.photo)} onChange={() => setErrors((curr) => ({ ...curr, photo: undefined }))} />{errors.photo && <small className="error">{errors.photo}</small>}</label>
             </div>
           </fieldset>
 
@@ -1107,7 +514,7 @@ function App() {
             </div>
 
             <div className="product-check-grid">
-              {sortedProducts(products)
+              {sortedProductList
                 .filter((p) => {
                   if (productTab === "bundle") return p.id.startsWith("paket-");
                   if (productTab === "single") return !p.id.startsWith("paket-");
@@ -1115,7 +522,7 @@ function App() {
                 })
                 .map((product) => {
                   const selected = selectedProducts.includes(product.id);
-                  const isBestSeller = product.id === "paket-lengkap" || product.id === "paket-lc";
+                  const isBestSeller = BEST_SELLER_IDS.includes(product.id);
                   return (
                     <label
                       className={`product-check ${selected ? "product-check--active" : ""} ${isBestSeller ? "product-check--highlight" : ""}`}
