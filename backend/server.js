@@ -3,19 +3,21 @@ console.log("🚀 Initializing Mudahkan PKKmu Backend...");
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import qrcodeTerminal from "qrcode-terminal";
-import QRCode from "qrcode";
-import pkg from "whatsapp-web.js";
+import crypto from "crypto";
 
 import fs from "fs";
 import path from "path";
 
-import { PORT, WA_GROUP_LINK, ALLOWED_ORIGINS, MIDTRANS_SERVER_KEY } from "./config.js";
-import { formatWaNumber } from "./services/whatsapp.js";
-import { PRODUCT_PRICES, computeTotal } from "./services/midtrans.js";
+import { PORT, WA_GROUP_LINK, ALLOWED_ORIGINS, MIDTRANS_SERVER_KEY, SESSION_TTL } from "./config.js";
+import { state } from "./state.js";
+import { initOrdersTable, saveOrder, getOrder, updateOrderStatus } from "./db/orders.js";
+import { initDb, loadSettings, saveSettings, SETTINGS_DB } from "./services/settings.js";
+import { formatWaNumber, resolveCoordTarget, fetchChatsFromStore } from "./services/whatsapp.js";
+import { computeTotal } from "./services/midtrans.js";
 import { sendToGoogleSheets } from "./services/sheets.js";
-
-const { Client, LocalAuth } = pkg;
+import { createWaClient, startWaClient } from "./services/wa-client.js";
+import { rateLimitLogin, newToken, checkAuth } from "./middleware/auth.js";
+import { notifyPaymentSuccessSSE } from "./services/sse.js";
 
 const app = express();
 
@@ -42,173 +44,11 @@ process.on("uncaughtException", (err) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Node.js Backend Server listening on port: ${PORT}`);
 });
-
-// Store orders — SQLite with in-memory fallback
-// ponytail: in-memory fallback when SQLite unavailable, migrate fully when DB proven stable
-const ordersStore = {};
-
-function initOrdersTable() {
-  if (!db) return;
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS orders (
-      orderId TEXT PRIMARY KEY,
-      name TEXT,
-      nim TEXT,
-      prodi TEXT,
-      faculty TEXT,
-      whatsapp TEXT,
-      products TEXT,
-      total REAL,
-      status TEXT NOT NULL DEFAULT 'PENDING',
-      photoBase64 TEXT,
-      photoName TEXT,
-      photoType TEXT,
-      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
-}
-
-function saveOrder(orderData) {
-  if (!db) {
-    ordersStore[orderData.orderId] = orderData;
-    return;
-  }
-  db.prepare(`
-    INSERT INTO orders (orderId, name, nim, prodi, faculty, whatsapp, products, total, status, photoBase64, photoName, photoType)
-    VALUES (@orderId, @name, @nim, @prodi, @faculty, @whatsapp, @products, @total, @status, @photoBase64, @photoName, @photoType)
-    ON CONFLICT(orderId) DO UPDATE SET
-      name = excluded.name,
-      nim = excluded.nim,
-      prodi = excluded.prodi,
-      faculty = excluded.faculty,
-      whatsapp = excluded.whatsapp,
-      products = excluded.products,
-      total = excluded.total,
-      status = excluded.status,
-      photoBase64 = excluded.photoBase64,
-      photoName = excluded.photoName,
-      photoType = excluded.photoType
-  `).run({
-    orderId: orderData.orderId,
-    name: orderData.name || "",
-    nim: orderData.nim || "",
-    prodi: orderData.prodi || "",
-    faculty: orderData.faculty || "",
-    whatsapp: orderData.whatsapp || "",
-    products: Array.isArray(orderData.products) ? JSON.stringify(orderData.products) : (orderData.products || ""),
-    total: orderData.total || 0,
-    status: orderData.status || "PENDING",
-    photoBase64: orderData.photoBase64 || "",
-    photoName: orderData.photoName || "",
-    photoType: orderData.photoType || "",
-  });
-}
-
-function getOrder(orderId) {
-  if (!db) return ordersStore[orderId] || null;
-  const row = db.prepare("SELECT * FROM orders WHERE orderId = ?").get(orderId);
-  if (!row) return null;
-  return {
-    ...row,
-    products: row.products ? (() => { try { return JSON.parse(row.products); } catch { return row.products; } })() : [],
-  };
-}
-
-function updateOrderStatus(orderId, status) {
-  if (!db) {
-    if (!ordersStore[orderId]) ordersStore[orderId] = { orderId };
-    ordersStore[orderId].status = status;
-    return ordersStore[orderId];
-  }
-  // INSERT OR IGNORE first so webhook can mark PAID even if /api/send-order-notif hasn't persisted yet
-  db.prepare("INSERT OR IGNORE INTO orders (orderId, status) VALUES (?, ?)").run(orderId, status);
-  db.prepare("UPDATE orders SET status = ? WHERE orderId = ?").run(status, orderId);
-  return getOrder(orderId);
-}
-
-let latestQrImage = "";
-let isWaReady = false;
-
-// ===== Pengaturan (SQLite local DB / JSON fallback) =====
-const SETTINGS_DB = path.resolve("./.wwebjs_auth/settings.db");
-const LEGACY_SETTINGS = path.resolve("./settings.json");
-const DEFAULT_PIN = process.env.SETTINGS_PIN || "pkkmu2026";
-let settings = {
-  mode: "production", // "production" | "testing"
-  coordWa: "",        // Nomor WA koordinator (khusus koordinasi)
-  coordType: "wa",    // "wa" (nomor) | "group" (nama grup WhatsApp)
-  pin: DEFAULT_PIN,
-};
-
-let db = null;
-console.log("📍 [STEP 1] Loading SQLite database...");
-try {
-  const dir = path.dirname(SETTINGS_DB);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const Database = (await import("better-sqlite3")).default;
-  db = new Database(SETTINGS_DB);
-  db.pragma("journal_mode = WAL");
-  console.log("💾 [STEP 1 OK] SQLite database terhubung (WAL mode).");
-} catch (e) {
-  console.error("⚠️ [STEP 1 FALLBACK] SQLite tidak dapat dimuat, fallback ke settings.json:", e && e.message);
-  db = null;
-}
-
-function loadSettings() {
-  try {
-    if (!db) {
-      if (fs.existsSync(LEGACY_SETTINGS)) {
-        settings = { ...settings, ...JSON.parse(fs.readFileSync(LEGACY_SETTINGS, "utf8")) };
-      }
-      return;
-    }
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        mode TEXT NOT NULL DEFAULT 'production',
-        coordWa TEXT NOT NULL DEFAULT '',
-        coordType TEXT NOT NULL DEFAULT 'wa',
-        pin TEXT NOT NULL
-      );
-    `);
-    const row = db.prepare("SELECT mode, coordWa, coordType, pin FROM settings WHERE id = 1").get();
-    if (row) {
-      settings = {
-        mode: row.mode || "production",
-        coordWa: row.coordWa || "",
-        coordType: row.coordType || "wa",
-        pin: row.pin || DEFAULT_PIN,
-      };
-    }
-  } catch (e) {
-    console.error("Gagal membaca SQLite settings:", e);
-  }
-}
-
-function saveSettings() {
-  try {
-    if (!db) {
-      fs.writeFileSync(LEGACY_SETTINGS, JSON.stringify(settings, null, 2));
-      return;
-    }
-    db.prepare(`
-      INSERT INTO settings (id, mode, coordWa, coordType, pin)
-      VALUES (1, @mode, @coordWa, @coordType, @pin)
-      ON CONFLICT(id) DO UPDATE SET
-        mode = excluded.mode,
-        coordWa = excluded.coordWa,
-        coordType = excluded.coordType,
-        pin = excluded.pin
-    `).run(settings);
-  } catch (e) {
-    console.error("Gagal menyimpan SQLite settings:", e);
-  }
-}
-
+// ===== Bootstrap: SQLite + settings =====
+await initDb();
 loadSettings();
 initOrdersTable();
+
 
 // Clean all stale Chromium locks before initializing.
 // NOTE: SingletonLock/Cookie/Socket are SYMLINKS to a (now-dead) container hostname.
@@ -228,143 +68,12 @@ if (fs.existsSync(sessionDir)) {
   });
 }
 
-// Initialize WhatsApp Web Client with LocalAuth for session persistence
-function createWaClient() {
-  const client = new Client({
-    authStrategy: new LocalAuth({ dataPath: "./.wwebjs_auth" }),
-    puppeteer: {
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-gpu",
-      ],
-    },
-  });
-
-  client.on("qr", async (qr) => {
-    console.log("\n==========================================");
-    console.log("SCAN QR CODE DENGAN WHATSAPP UNTUK LOGIN:");
-    console.log("==========================================\n");
-    qrcodeTerminal.generate(qr, { small: true });
-
-    try {
-      latestQrImage = await QRCode.toDataURL(qr);
-    } catch (err) {
-      console.error("Gagal membuat data URL QR:", err);
-    }
-  });
-
-  client.on("ready", () => {
-    console.log("✅ WhatsApp Web Bot siap dan terhubung!");
-    isWaReady = true;
-    latestQrImage = "";
-  });
-
-  client.on("authenticated", () => {
-    console.log("🔐 Autentikasi WhatsApp Berhasil.");
-  });
-
-  client.on("auth_failure", (msg) => {
-    console.error("❌ Gagal Autentikasi WhatsApp:", msg);
-  });
-
-  client.on("disconnected", (reason) => {
-    console.log("⚠️ WhatsApp Terputus:", reason);
-    isWaReady = false;
-  });
-
-  return client;
-}
-
+// WhatsApp client (LocalAuth); delay 2s so HTTP opens first
 console.log("📍 [STEP 2] Creating WhatsApp Client instance...");
-let waClient = createWaClient();
-
-// initialize dengan retry otomatis — jangan biarkan crash mematikan proses
-const MAX_INIT_RETRIES = 8;
-async function startWaClient() {
-  for (let attempt = 1; attempt <= MAX_INIT_RETRIES; attempt++) {
-    try {
-      console.log(`🤖 [STEP 3] Inisialisasi WhatsApp Puppeteer (percobaan ${attempt})...`);
-      await waClient.initialize();
-      return; // sukses, selesai
-    } catch (err) {
-      console.error(`❌ Inisialisasi gagal (percobaan ${attempt}):`, err && err.message);
-      if (attempt >= MAX_INIT_RETRIES) {
-        console.error("⛔ Semua percobaan inisialisasi WhatsApp gagal. Tetap menjalankan server HTTP.");
-        return;
-      }
-      try {
-        await waClient.destroy();
-      } catch (e) {}
-      waClient = createWaClient();
-      const delayMs = Math.min(10000, 3000 * attempt);
-      console.log(`⏳ Coba lagi dalam ${delayMs / 1000} detik...`);
-      await new Promise((r) => setTimeout(r, delayMs));
-    }
-  }
-}
-
-// Delay WA init by 2 seconds so Express HTTP server opens port 5760 cleanly first
+state.waClient = createWaClient();
 setTimeout(() => {
   startWaClient();
 }, 2000);
-
-// Resolve target koordinasi -> chat ID WhatsApp
-// coordType "wa"    : nomor HP -> 628xxx@c.us
-// coordType "group" : nama grup -> dicari dari daftar chat, pakai invite code jika ada
-async function resolveCoordTarget() {
-  if (!settings.coordWa || !isWaReady) return null;
-
-  const targetStr = settings.coordWa.trim();
-  if (targetStr.endsWith("@g.us") || targetStr.endsWith("@c.us")) {
-    return targetStr;
-  }
-
-  const isDigitsOnly = /^\+?\d+$/.test(targetStr);
-  const nameClean = targetStr.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-  try {
-    let chats = await waClient.getChats().catch(() => []);
-    console.log(`🔍 [DEBUG resolveCoordTarget] Target: "${targetStr}", Total getChats: ${chats.length}`);
-    for (const chat of chats) {
-      if (!chat || !chat.id) continue;
-      const chatId = String(chat.id._serialized || chat.id);
-      const rawName = String(chat.name || chat.formattedTitle || chat.title || "");
-      const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-      if (rawName && (chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-        console.log(`🎯 [resolveCoordTarget OK] Match "${rawName}" -> JID: ${chatId}`);
-        if (chatId.includes("@")) return chatId;
-      }
-    }
-
-    const storeChats = await fetchChatsFromStore();
-    console.log(`🔍 [DEBUG resolveCoordTarget] Target: "${targetStr}", Total storeChats: ${storeChats.length}`);
-    for (const chat of storeChats) {
-      const chatId = String(chat.id || "");
-      const rawName = String(chat.name || "");
-      const chatNameClean = rawName.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-      if (rawName && (chatNameClean.includes(nameClean) || nameClean.includes(chatNameClean))) {
-        console.log(`🎯 [resolveCoordTarget Store OK] Match "${rawName}" -> JID: ${chatId}`);
-        if (chatId.includes("@")) return chatId;
-      }
-    }
-  } catch (e) {
-    console.error("Error resolveCoordTarget group search:", e);
-  }
-
-  if (isDigitsOnly) {
-    return formatWaNumber(targetStr);
-  }
-  return null;
-}
 
 // Halaman Web /qr untuk scan QR Code di browser dengan gambar HD bersih
 function qrPageShell(title, contentHtml) {
@@ -374,7 +83,7 @@ function qrPageShell(title, contentHtml) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#174b36" />
-  ${!isWaReady ? '<meta http-equiv="refresh" content="4" />' : ""}
+  ${!state.isWaReady ? '<meta http-equiv="refresh" content="4" />' : ""}
   <title>${title} | Mudahkan PKKMU!</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -442,7 +151,7 @@ function qrPageShell(title, contentHtml) {
 
 app.get("/qr", (req, res) => {
   res.setHeader("Content-Type", "text/html");
-  if (isWaReady) {
+  if (state.isWaReady) {
     return res.send(qrPageShell("Bot Terhubung", `
       <div class="card">
         <div class="icon">✅</div>
@@ -454,12 +163,12 @@ app.get("/qr", (req, res) => {
     `));
   }
 
-  if (latestQrImage) {
+  if (state.latestQrImage) {
     return res.send(qrPageShell("Scan WhatsApp QR", `
       <div class="card">
         <h2>Scan QR Code</h2>
         <p>Buka WhatsApp di HP → <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong> → scan QR di bawah ini.</p>
-        <img class="qr" src="${latestQrImage}" alt="QR Code WhatsApp" />
+        <img class="qr" src="${state.latestQrImage}" alt="QR Code WhatsApp" />
         <small>Halaman otomatis reload tiap 6 detik...</small>
       </div>
     `));
@@ -479,8 +188,8 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     app: "mudahkan-pkkmu-backend",
-    whatsapp_ready: isWaReady,
-    mode: settings.mode,
+    whatsapp_ready: state.isWaReady,
+    mode: state.settings.mode,
     timestamp: new Date().toISOString(),
   });
 });
@@ -502,58 +211,14 @@ app.get("/", (req, res) => {
   res.sendFile(path.resolve("./index.html"));
 });
 
-// ===== Session token agar login tidak reset setelah refresh/deploy =====
-import crypto from "crypto";
-const SESSION_TTL = 12 * 60 * 60 * 1000; // 12 jam
-const sessions = new Map(); // token -> expiry ts
-
-// Rate limiter in-memory (tanpa dependency) — cegah brute-force PIN.
-// ponytail: single-instance OK; add when: multi-replica → pindah ke Redis (ioredis) atau express-rate-limit
-const loginAttempts = new Map(); // ip -> { count, resetAt }
-const LOGIN_MAX = 5;             // max 5 percobaan
-const LOGIN_WINDOW = 15 * 60 * 1000; // per 15 menit
-
-function rateLimitLogin(req, res, next) {
-  const ip = req.ip || req.socket?.remoteAddress || "unknown";
-  const now = Date.now();
-  const rec = loginAttempts.get(ip);
-  if (!rec || rec.resetAt <= now) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW });
-    return next();
-  }
-  rec.count += 1;
-  if (rec.count > LOGIN_MAX) {
-    const minsLeft = Math.ceil((rec.resetAt - now) / 60000);
-    return res.status(429).json({ error: `Terlalu banyak percobaan. Coba lagi dalam ${minsLeft} menit.` });
-  }
-  return next();
-}
-
-function newToken() {
-  return crypto.randomBytes(24).toString("base64url");
-}
-
-function checkAuth(req) {
-  // ponytail: PIN/token via header only — query string bocor di URL/logs, add when: butuh backward compat lama
-  const pin = (req.headers && req.headers["x-auth-pin"]) || (req.body && req.body.pin);
-  if (settings.pin && pin === settings.pin) return true;
-  const token = (req.headers && req.headers["x-auth-token"]);
-  if (token) {
-    const exp = sessions.get(token);
-    if (exp && exp > Date.now()) return true;
-    sessions.delete(token);
-  }
-  return false;
-}
-
 // Buat session token (untuk persist login)
 app.post("/api/auth", rateLimitLogin, (req, res) => {
   const { pin } = req.body || {};
-  if (!settings.pin || pin !== settings.pin) {
+  if (!state.settings.pin || pin !== state.settings.pin) {
     return res.status(401).json({ error: "PIN salah." });
   }
   const token = newToken();
-  sessions.set(token, Date.now() + SESSION_TTL);
+  state.sessions.set(token, Date.now() + SESSION_TTL);
   res.json({ status: "success", token });
 });
 
@@ -561,11 +226,11 @@ app.post("/api/auth", rateLimitLogin, (req, res) => {
 app.get("/api/settings", (req, res) => {
   const isAuth = checkAuth(req);
   res.json({
-    mode: settings.mode,
-    coordWa: isAuth ? settings.coordWa : "",
-    coordType: isAuth ? settings.coordType : "",
+    mode: state.settings.mode,
+    coordWa: isAuth ? state.settings.coordWa : "",
+    coordType: isAuth ? state.settings.coordType : "",
     locked: !isAuth,
-    whatsapp_ready: isWaReady,
+    whatsapp_ready: state.isWaReady,
   });
 });
 
@@ -578,170 +243,33 @@ app.post("/api/settings", (req, res) => {
   }
 
   if (mode === "production" || mode === "testing") {
-    settings.mode = mode;
+    state.settings.mode = mode;
   }
   if (typeof coordWa === "string") {
-    settings.coordWa = coordWa.trim();
+    state.settings.coordWa = coordWa.trim();
   }
   if (coordType === "wa" || coordType === "group") {
-    settings.coordType = coordType;
+    state.settings.coordType = coordType;
   }
   if (newPin && newPin.trim().length >= 4) {
-    settings.pin = newPin.trim();
+    state.settings.pin = newPin.trim();
   }
 
   saveSettings();
   res.json({
     status: "success",
-    mode: settings.mode,
-    coordWa: settings.coordWa,
-    coordType: settings.coordType,
-    whatsapp_ready: isWaReady,
+    mode: state.settings.mode,
+    coordWa: state.settings.coordWa,
+    coordType: state.settings.coordType,
+    whatsapp_ready: state.isWaReady,
   });
 });
-
-// Daftar chat yang ada di bot WhatsApp (untuk memilih tujuan koordinasi) — wajib PIN
-async function fetchChatsFromStore() {
-  if (!isWaReady || !waClient) return [];
-
-  // Strategi 1: Official whatsapp-web.js getChats()
-  try {
-    const chats = await waClient.getChats();
-    if (Array.isArray(chats) && chats.length > 0) {
-      const out = [];
-      const seen = new Set();
-      for (const c of chats) {
-        if (!c || !c.id) continue;
-        const jid = c.id._serialized || (typeof c.id === "string" ? c.id : (c.id.user ? c.id.user + (c.isGroup ? "@g.us" : "@c.us") : ""));
-        if (!jid || !jid.includes("@")) continue;
-
-        const rawName = c.name || c.formattedTitle || c.title || c.id.user || "";
-        const name = String(rawName || jid).trim();
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-
-        const isGroup = Boolean(c.isGroup || jid.endsWith("@g.us"));
-        out.push({
-          type: isGroup ? "group" : "wa",
-          name: name,
-          phone: jid.replace(/@.*$/, ""),
-          id: jid,
-        });
-      }
-
-      if (out.length > 0) {
-        console.log(`✅ [fetchChatsFromStore OK] getChats() returned ${out.length} chats with valid JIDs!`);
-        return out.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      }
-    }
-  } catch (err) {}
-
-  // Strategi 2: Deep React Fiber & Store Traversal (100% Reliable & Presisi JID @g.us)
-  try {
-    if (!waClient.pupPage) return [];
-    const directChats = await waClient.pupPage.evaluate(() => {
-      const list = [];
-      const seen = new Set();
-
-      // Check window.Store / Webpack Collections
-      try {
-        let models = [];
-        if (window.Store && window.Store.Chat) {
-          models = window.Store.Chat.models || window.Store.Chat._models || [];
-        }
-        if ((!models || models.length === 0) && window.require) {
-          try {
-            const chatColl = window.require('WAWebChatCollection');
-            if (chatColl && chatColl.ChatCollection) {
-              models = chatColl.ChatCollection.getModelsArray() || [];
-            }
-          } catch (e) {}
-        }
-
-        for (const m of models) {
-          if (!m || !m.id) continue;
-          const jid = m.id._serialized || String(m.id);
-          const name = m.name || m.formattedTitle || m.title || m.contact?.name || "";
-          if (name && jid && jid.includes("@") && !seen.has(name)) {
-            seen.add(name);
-            const isGroup = Boolean(m.isGroup || jid.endsWith("@g.us"));
-            list.push({
-              type: isGroup ? "group" : "wa",
-              name: String(name),
-              phone: jid.replace(/@.*$/, ""),
-              id: jid,
-            });
-          }
-        }
-      } catch (e) {}
-
-      // Deep React Fiber Search on #pane-side chat rows
-      try {
-        const rows = Array.from(document.querySelectorAll('#pane-side div[role="row"], #pane-side [data-testid="chat-list"] > div'));
-        for (const row of rows) {
-          let name = "";
-          let jid = "";
-          const titleEl = row.querySelector('span[title]');
-          if (titleEl) name = (titleEl.getAttribute('title') || titleEl.textContent || "").trim();
-
-          const stack = [];
-          for (const k in row) {
-            if (k.startsWith('__reactFiber') || k.startsWith('__reactProps')) {
-              stack.push({ node: row[k], depth: 0 });
-            }
-          }
-
-          while (stack.length > 0) {
-            const { node, depth } = stack.pop();
-            if (!node || depth > 15 || jid) continue;
-
-            const p = node.memoizedProps;
-            if (p) {
-              if (p.chat && p.chat.id) {
-                jid = p.chat.id._serialized || String(p.chat.id);
-                if (!name && p.chat.name) name = p.chat.name;
-              } else if (p.id && typeof p.id === "string" && p.id.includes("@")) {
-                jid = p.id;
-              } else if (p.jid && typeof p.jid === "string" && p.jid.includes("@")) {
-                jid = p.jid;
-              }
-            }
-
-            if (node.child) stack.push({ node: node.child, depth: depth + 1 });
-            if (node.sibling) stack.push({ node: node.sibling, depth: depth + 1 });
-            if (node.return && depth < 3) stack.push({ node: node.return, depth: depth + 1 });
-          }
-
-          if (name && jid && jid.includes("@") && !seen.has(name)) {
-            seen.add(name);
-            const isGroup = Boolean(jid.endsWith("@g.us"));
-            list.push({
-              type: isGroup ? "group" : "wa",
-              name: name,
-              phone: jid.replace(/@.*$/, ""),
-              id: jid,
-            });
-          }
-        }
-      } catch (e) {}
-
-      return list;
-    });
-
-    if (Array.isArray(directChats) && directChats.length > 0) {
-      console.log(`✅ [DOM Traversal OK] Found ${directChats.length} chats with valid JIDs!`);
-      return directChats.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    }
-  } catch (err) {}
-
-  return [];
-}
 
 app.get("/api/chats", async (req, res) => {
   if (!checkAuth(req)) {
     return res.status(401).json({ error: "Silakan login dengan PIN terlebih dahulu." });
   }
-  if (!isWaReady) {
+  if (!state.isWaReady) {
     return res.status(503).json({ error: "WhatsApp bot belum siap." });
   }
   try {
@@ -766,7 +294,7 @@ app.post("/api/charge-qris", async (req, res) => {
     if (!orderId || computedTotal <= 0) {
       return res.status(400).json({ error: "orderId valid & daftar produk wajib tersedia." });
     }
-    const chargeAmount = settings.mode === "testing" ? 1 : computedTotal;
+    const chargeAmount = state.settings.mode === "testing" ? 1 : computedTotal;
 
     const authHeader = "Basic " + Buffer.from(MIDTRANS_SERVER_KEY + ":").toString("base64");
     const response = await fetch("https://api.midtrans.com/v2/charge", {
@@ -813,8 +341,6 @@ app.post("/api/charge-qris", async (req, res) => {
 });
 
 // Active SSE connections keyed by orderId
-const sseClients = {};
-
 app.get("/api/payment-stream", (req, res) => {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).end();
@@ -830,10 +356,10 @@ app.get("/api/payment-stream", (req, res) => {
     res.write(`data: ${JSON.stringify({ paid: true, status: "PAID" })}\n\n`);
   }
 
-  if (!sseClients[orderId]) {
-    sseClients[orderId] = [];
+  if (!state.sseClients[orderId]) {
+    state.sseClients[orderId] = [];
   }
-  sseClients[orderId].push(res);
+  state.sseClients[orderId].push(res);
 
   // ponytail: heartbeat tiap 15s cegah proxy/LB cut idle SSE — add when: polling-based push (WebSocket)
   const heartbeat = setInterval(() => {
@@ -842,24 +368,11 @@ app.get("/api/payment-stream", (req, res) => {
 
   req.on("close", () => {
     clearInterval(heartbeat);
-    if (sseClients[orderId]) {
-      sseClients[orderId] = sseClients[orderId].filter((client) => client !== res);
+    if (state.sseClients[orderId]) {
+      state.sseClients[orderId] = state.sseClients[orderId].filter((client) => client !== res);
     }
   });
 });
-
-function notifyPaymentSuccessSSE(orderId) {
-  const clients = sseClients[orderId];
-  if (clients && clients.length > 0) {
-    console.log(`⚡ [SSE Real-Time Push OK] Notifying ${clients.length} frontend browser client(s) for Order: ${orderId}`);
-    const payload = `data: ${JSON.stringify({ paid: true, status: "PAID" })}\n\n`;
-    clients.forEach((client) => {
-      try {
-        client.write(payload);
-      } catch (e) {}
-    });
-  }
-}
 
 // Endpoint untuk mengecek status pembayaran pesanan real-time dari frontend
 app.get("/api/check-order-status", (req, res) => {
@@ -942,7 +455,7 @@ app.post("/api/midtrans-webhook", async (req, res) => {
       // Update status lunas di Google Sheets
       sendToGoogleSheets({ ...orderData, orderId, status: "LUNAS (PAID)" });
 
-      if (isWaReady) {
+      if (state.isWaReady) {
         const formattedNumber = orderData.whatsapp ? formatWaNumber(orderData.whatsapp) : "";
         const productListText = Array.isArray(orderData.products)
           ? orderData.products.join(", ")
@@ -965,12 +478,12 @@ ${WA_GROUP_LINK}
 
 _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
 
-          await waClient.sendMessage(formattedNumber, successMsg);
+          await state.waClient.sendMessage(formattedNumber, successMsg);
           console.log(`📩 Notifikasi PEMBAYARAN LUNAS terkirim via WA ke pembeli: ${formattedNumber}`);
         }
 
         // 2. PESAN KOORDINASI HANYA KETIKA PEMBAYARAN LUNAS KE GRUP 2FOUNDERS / ADMIN
-        if (settings.coordWa) {
+        if (state.settings.coordWa) {
           try {
             const coordTarget = await resolveCoordTarget();
             if (coordTarget) {
@@ -986,8 +499,8 @@ _Terima kasih! Sampai jumpa di lokasi pengambilan atribut & PKKBN 2026!_`;
 💰 Total: *Rp ${Number(orderData.total || 0).toLocaleString("id-ID")}*
 ✅ Status: *LUNAS (VERIFIED QRIS)*`;
 
-              await waClient.sendMessage(coordTarget, paidCoordText);
-              console.log(`🤝 Pesan koordinasi pesanan LUNAS terkirim ke grup: ${settings.coordWa} (${coordTarget})`);
+              await state.waClient.sendMessage(coordTarget, paidCoordText);
+              console.log(`🤝 Pesan koordinasi pesanan LUNAS terkirim ke grup: ${state.settings.coordWa} (${coordTarget})`);
             }
           } catch (coordErr) {
             console.error("Gagal kirim pesan koordinasi lunas:", coordErr);
